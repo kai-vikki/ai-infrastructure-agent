@@ -1,0 +1,288 @@
+# Resource ID Extraction Configuration  
+# This eliminates hardcoded tool-specific ID extraction logic
+
+# Common fallback field names for resource ID extraction
+# Used when tool-specific patterns don't match
+common_fallback_fields:
+  # Try these common field names in order of priority
+  - "resource_id"
+  - "resourceId"
+  - "id" 
+  - "subnetGroupId"
+  - "associationId"
+  - "instanceId"
+  - "vpcId"
+  - "subnetId"
+  - "securityGroupId"
+  - "groupId"
+  - "internetGatewayId"
+  - "natGatewayId" 
+  - "routeTableId"
+  - "dbInstanceId"
+  - "dbSubnetGroupName"
+  - "subnetGroupId"
+  - "associationId"
+  - "launchTemplateId"
+  - "targetGroupArn"
+  - "loadBalancerArn"
+
+resource_id_extraction:
+  # Define extraction patterns by tool action type
+  creation_tools:
+    # Tools that create resources - look in response/result
+    patterns:
+      # Universal patterns (try these first)
+      - field_paths: ["result.resourceId", "result.resource_id", "result.id"]
+        resource_types: ["*"]
+        priority: 1
+        
+      # VPC specific patterns
+      - field_paths: ["vpcId", "vpc_id", "result.vpcId", "result.vpc_id", "result.vpc.vpcId"]
+        resource_types: ["vpc"]
+        priority: 2
+        
+      # Subnet patterns  
+      - field_paths: ["subnetId", "subnet_id", "resource.ID", "result.subnetId", "result.subnet_id", "result.subnet.subnetId"]
+        resource_types: ["subnet"]
+        priority: 2
+        
+      # Instance patterns
+      - field_paths: ["instanceId", "instance_id", "result.instanceId", "result.instance_id", "result.instances[0].instanceId"]
+        resource_types: ["ec2_instance", "rds_instance"]
+        priority: 2
+        
+      # Load Balancer patterns (ARN-based)
+      - field_paths: ["result.loadBalancerArn", "result.load_balancer_arn", "result.loadBalancers[0].loadBalancerArn"]
+        resource_types: ["load_balancer", "alb", "nlb"]
+        priority: 2
+        
+      # Target Group patterns
+      - field_paths: ["result.targetGroupArn", "result.target_group_arn", "result.targetGroups[0].targetGroupArn"]
+        resource_types: ["target_group"]
+        priority: 2
+        
+      # Security Group patterns
+      - field_paths: ["securityGroupId", "security_group_id", "groupId", "result.securityGroupId", "result.security_group_id", "result.groupId", "result.securityGroups[0].groupId"]
+        resource_types: ["security_group"]
+        priority: 2
+        
+      # Auto Scaling Group patterns  
+      - field_paths: ["result.autoScalingGroupArn", "result.auto_scaling_group_arn", "result.autoScalingGroupName"]
+        resource_types: ["auto_scaling_group"]
+        priority: 2
+        
+      # Launch Template patterns
+      - field_paths: ["result.launchTemplateId", "result.launch_template_id", "result.launchTemplate.launchTemplateId"]
+        resource_types: ["launch_template"]
+        priority: 2
+        
+      # Networking infrastructure patterns
+      - field_paths: ["internetGatewayId", "result.internetGatewayId", "result.internet_gateway_id", "result.internetGateways[0].internetGatewayId"]
+        resource_types: ["internet_gateway"]
+        priority: 2
+        
+      - field_paths: ["natGatewayId", "result.natGatewayId", "result.nat_gateway_id", "result.natGateways[0].natGatewayId"]
+        resource_types: ["nat_gateway"]  
+        priority: 2
+        
+      - field_paths: ["routeTableId", "result.routeTableId", "result.route_table_id", "result.routeTables[0].routeTableId"]
+        resource_types: ["route_table"]
+        priority: 2
+        
+      # Database patterns
+      - field_paths: ["result.dbInstanceId", "result.db_instance_id", "result.dbInstance.dbInstanceId"]
+        resource_types: ["rds_instance"]
+        priority: 2
+        
+      - field_paths: ["subnetGroupId", "dbSubnetGroupName", "result.subnetGroupId", "result.dbSubnetGroupName", "result.db_subnet_group_name", "result.dbSubnetGroup.dbSubnetGroupName"]
+        resource_types: ["db_subnet_group"]
+        priority: 2
+        
+      # Association and operational patterns
+      - field_paths: ["routeTableId", "result.routeTableId", "result.route_table_id", "result.routeTables[0].routeTableId"]
+        resource_types: ["route_table"]
+        priority: 2
+        
+      # Association and operational patterns
+      - field_paths: ["associationId", "result.associationId", "result.association_id"]
+        resource_types: ["route_table_association", "route_table"]
+        priority: 1
+        
+  modification_tools:
+    # Tools that modify existing resources - look in parameters/input
+    patterns:
+      # Universal patterns
+      - field_paths: ["parameters.resourceId", "parameters.resource_id", "parameters.id"]
+        resource_types: ["*"]
+        priority: 1
+        
+      # VPC patterns
+      - field_paths: ["parameters.vpcId", "parameters.vpc_id"]
+        resource_types: ["vpc"]
+        priority: 2
+        
+      # Instance patterns  
+      - field_paths: ["parameters.instanceId", "parameters.instance_id", "parameters.instanceIds[0]"]
+        resource_types: ["ec2_instance", "rds_instance"]
+        priority: 2
+        
+      # Load Balancer patterns
+      - field_paths: ["parameters.loadBalancerArn", "parameters.load_balancer_arn"]
+        resource_types: ["load_balancer"]
+        priority: 2
+        
+      # Target Group patterns
+      - field_paths: ["parameters.targetGroupArn", "parameters.target_group_arn", "parameters.targetGroupArns[0]"]
+        resource_types: ["target_group"]
+        priority: 2
+        
+      # Auto Scaling Group patterns
+      - field_paths: ["parameters.autoScalingGroupName", "parameters.auto_scaling_group_name"]
+        resource_types: ["auto_scaling_group"]
+        priority: 2
+        
+  deletion_tools:
+    # Tools that delete resources - similar to modification tools
+    patterns:
+      # Universal patterns
+      - field_paths: ["parameters.resourceId", "parameters.resource_id", "parameters.id"]
+        resource_types: ["*"]  
+        priority: 1
+        
+      # Resource-specific deletion patterns
+      - field_paths: ["parameters.vpcId", "parameters.vpc_id"]
+        resource_types: ["vpc"]
+        priority: 2
+        
+      - field_paths: ["parameters.instanceId", "parameters.instance_id", "parameters.instanceIds[0]"]
+        resource_types: ["ec2_instance"]
+        priority: 2
+        
+      - field_paths: ["parameters.loadBalancerArn", "parameters.load_balancer_arn"]
+        resource_types: ["load_balancer"]
+        priority: 2
+        
+  query_tools:
+    # Tools that query/describe resources - may be in parameters or result
+    patterns:
+      # Check parameters first (what we're querying for)
+      - field_paths: ["parameters.resourceIds[0]", "parameters.resource_ids[0]", "parameters.ids[0]"]
+        resource_types: ["*"]
+        priority: 1
+        
+      # Then check result (what we found)  
+      - field_paths: ["result.resources[0].resourceId", "result.resources[0].id"]
+        resource_types: ["*"]
+        priority: 2
+        
+      # VPC query patterns
+      - field_paths: ["parameters.vpcIds[0]", "result.vpcs[0].vpcId"]
+        resource_types: ["vpc"]
+        priority: 2
+        
+      # Instance query patterns
+      - field_paths: ["parameters.instanceIds[0]", "result.instances[0].instanceId"]
+        resource_types: ["ec2_instance"]
+        priority: 2
+        
+  association_tools:
+    # Association tools create new association resources - look in result like creation tools
+    patterns:
+      # Association patterns (return association IDs in result)
+      - field_paths: ["associationId", "result.associationId", "result.association_id"]
+        resource_types: ["route_table_association", "route_table"]
+        priority: 1
+        
+      # Universal association patterns
+      - field_paths: ["result.resourceId", "result.resource_id", "result.id"]
+        resource_types: ["*"]
+        priority: 2
+
+# Tool action type classification patterns
+tool_action_types:
+  creation_tools:
+    patterns: 
+      - "create.*"
+      - "launch.*" 
+      - "provision.*"
+      - "deploy.*"
+      - "run.*"
+      - "start.*"
+      
+  modification_tools:
+    patterns:
+      - "update.*"
+      - "modify.*"
+      - "attach.*"
+      - "detach.*"
+      - "add.*"
+      - "remove.*"
+      - "register.*"
+      - "deregister.*"
+      
+  # Association tools are special - they modify relationships but create new association resources
+  association_tools:
+    patterns:
+      - "associate.*"
+      - "disassociate.*"
+      
+  deletion_tools:
+    patterns:
+      - "delete.*"
+      - "terminate.*"
+      - "destroy.*"
+      - "remove.*"
+      - "stop.*"
+      
+  query_tools:
+    patterns:
+      - "describe.*"
+      - "list.*"
+      - "get.*"
+      - "find.*"
+      - "discover.*"
+      - "scan.*"
+      - "search.*"
+
+# Special cases for complex ID extraction
+special_extraction_rules:
+  # Some resources have compound IDs or special formats
+  target_group_health:
+    # Health check results include both target group ARN and target IDs  
+    target_group_arn: ["result.targetGroupArn", "parameters.targetGroupArn"]
+    target_ids: ["result.targetHealthDescriptions[*].target.id"]
+    
+  auto_scaling_group_instances:
+    # ASG operations may reference both ASG name and instance IDs
+    asg_name: ["parameters.autoScalingGroupName", "result.autoScalingGroupName"] 
+    instance_ids: ["result.instances[*].instanceId", "parameters.instanceIds"]
+    
+  load_balancer_listeners:
+    # Listener operations need both LB ARN and listener ARN
+    load_balancer_arn: ["parameters.loadBalancerArn", "result.loadBalancerArn"]
+    listener_arns: ["result.listeners[*].listenerArn", "parameters.listenerArn"]
+
+# Default extraction strategies when patterns fail
+fallback_strategies:
+  # Try common field names in order of likelihood
+  common_id_fields:
+    - "resourceId"
+    - "id" 
+    - "resource_id"
+    - "arn"
+    - "name"
+    - "identifier"
+    
+  # For array results, try to extract from first element
+  array_extraction:
+    - "result[0].resourceId"
+    - "result[0].id"
+    - "result[0].arn" 
+    - "result[0].name"
+    
+  # Nested object extraction
+  nested_extraction:
+    - "result.resource.resourceId"
+    - "result.resource.id"
+    - "result.data.resourceId"
+    - "result.data.id"

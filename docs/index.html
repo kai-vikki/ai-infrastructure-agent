@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Infrastructure Agent - Intelligent AWS Management</title>
+    <meta name="description" content="AI Infrastructure Agent is an intelligent system that allows you to manage AWS infrastructure using natural language commands.">
+    <meta name="keywords" content="AI, AWS, Infrastructure as Code, DevOps, Cloud Management, OpenAI, Gemini, Anthropic">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://rsms.me/inter/inter.css');
+        .gradient-text {
+            background: -webkit-linear-gradient(45deg, #4F46E5, #EC4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .code-block {
+            background-color: #0D1117;
+            color: #E6EDF3;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #30363D;
+            font-family: 'Fira Code', monospace;
+            /* white-space: pre-wrap; */
+            word-break: break-word;
+            position: relative;
+            max-width: 900px;
+            width: fit-content;
+            margin: 0 auto;
+        }
+        .code-block::before {
+            color: #7C3AED;
+            font-weight: bold;
+        }
+        .code-block .comment {
+            color: #8B949E;
+        }
+        .code-block .command {
+            color: #79C0FF;
+        }
+        .code-block .path {
+            color: #A5A5A5;
+        }
+        .nav-header {
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #374151;
+        }
+        .nav-logo {
+            height: 40px;
+            width: auto;
+        }
+        .nav-menu a {
+            color: #E5E7EB;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .nav-menu a:hover {
+            background-color: #374151;
+            color: #FFFFFF;
+        }
+                .github-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            padding: 12px !important;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+            background: rgba(55, 65, 81, 0.8) !important;
+            border: 1px solid #6B7280 !important;
+            width: 48px;
+            height: 48px;
+        }
+        .mobile-menu-btn:hover {
+            background-color: #374151;
+        }
+        .mobile-menu-btn span {
+            display: block !important;
+            width: 24px !important;
+            height: 3px !important;
+            background-color: #FFFFFF !important;
+            margin: 3px 0 !important;
+            border-radius: 2px !important;
+            transition: 0.3s ease !important;
+        }
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(17, 24, 39, 0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #374151;
+            padding: 1rem;
+        }
+        .mobile-menu.active {
+            display: block;
+        }
+        .mobile-menu a {
+            display: block;
+            color: #E5E7EB;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 4px 0;
+            transition: all 0.2s ease;
+        }
+        .mobile-menu a:hover {
+            background-color: #374151;
+            color: #FFFFFF;
+        }
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Navigation Header -->
+    <nav class="nav-header fixed top-0 left-0 right-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <img src="images/ai-infrastructure-agent.svg" alt="AI Infrastructure Agent" class="nav-logo">
+                </div>
+                
+                <!-- Center: Desktop Menu OR Mobile Menu Button -->
+                <div class="flex items-center">
+                    <!-- Desktop Menu -->
+                    <div class="hidden md:flex nav-menu space-x-6">
+                        <a href="#home">Home</a>
+                        <a href="#document">Docs</a>
+                        <a href="https://github.com/VersusControl/devops-ai-guidelines/blob/main/resources/ai-infrastructure-agent-for-aws.md" target="_blank">Quick Example</a>
+                        <a href="https://github.com/VersusControl/devops-ai-guidelines/blob/main/04-ai-agent-for-aws/00-toc.md" target="_blank">Tutorial</a>
+                        <a href="#pricing">Pricing</a>
+                    </div>
+                    
+                    <!-- Mobile Menu Button (Visible on Mobile) -->
+                    <button class="mobile-menu-btn block md:hidden" onclick="toggleMobileMenu()">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+                
+                <!-- Right Side: GitHub Link Only -->
+                <div class="flex items-center">
+                    <!-- GitHub Link -->
+                    <a href="https://github.com/VersusControl/ai-infrastructure-agent" target="_blank" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="github-icon" viewBox="0 0 24 24">
+                            <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobileMenu" class="mobile-menu">
+                <a href="#home">Home</a>
+                <a href="#document">Docs</a>
+                <a href="https://github.com/VersusControl/devops-ai-guidelines/blob/main/resources/ai-infrastructure-agent-for-aws.md" target="_blank">Quick Example</a>
+                <a href="https://github.com/VersusControl/devops-ai-guidelines/blob/main/04-ai-agent-for-aws/00-toc.md" target="_blank">Tutorial</a>
+                <a href="#pricing">Pricing</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8" style="margin-top: 64px;">
+
+        <!-- Header -->
+        <header class="text-center mb-16">
+            <h1 class="text-5xl md:text-7xl font-bold mb-4 gradient-text">AI Infrastructure Agent</h1>
+            <p class="text-xl md:text-2xl text-gray-400">Intelligent AWS infrastructure management through natural language.</p>
+        </header>
+
+        <!-- Get Started Section -->
+        <section class="mb-12">
+            <!-- Section Title -->
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-4 text-white">Get Started in Seconds</h2>
+                <p class="text-gray-400">Clone the repository and run the installation script to get started.</p>
+            </div>
+            
+            <!-- Code Block and UI Image in Two Rows -->
+            <div class="mx-auto">
+                <!-- Installation Guide Row -->
+                <div class="mb-8">
+                    <div class="code-block text-sm">
+                        <span class="comment"># Clone the repository</span></br>
+                        <span class="command">git clone</span> https://github.com/VersusControl/ai-infrastructure-agent.git</br>
+                        <span class="command">cd</span> <span class="path">ai-infrastructure-agent</span></br>
+                        </br>
+                        <span class="comment"># Run the installation script</span></br>
+                        <span class="command">./scripts/install.sh</span></br>
+                        </br>
+                        <span class="comment"># Start the Web UI</span></br>
+                        <span class="command">./scripts/run-web-ui.sh</span></br>
+                    </div>
+                </div>
+                <!-- Project UI Image Row -->
+                <div class="flex justify-center">
+                    <!-- Placeholder for Web UI Image. Replace docs/images/web-dashboard.svg with the actual path if different. -->
+                    <img src="images/web-dashboard.svg" alt="Project Web UI" class="rounded-lg shadow-2xl w-full max-w-2xl">
+                </div>
+            </div>
+        </section>
+
+        <!-- GitHub Badges -->
+        <div class="flex justify-center space-x-4 mb-16">
+            <a href="https://github.com/VersusControl/ai-infrastructure-agent/stargazers"><img src="https://img.shields.io/github/stars/VersusControl/ai-infrastructure-agent?style=for-the-badge&logo=github&color=blue" alt="GitHub Stars"></a>
+            <a href="https://github.com/VersusControl/ai-infrastructure-agent/blob/main/LICENSE"><img src="https://img.shields.io/github/license/VersusControl/ai-infrastructure-agent?style=for-the-badge&color=brightgreen" alt="License"></a>
+            <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.24.2+-00ADD8?style=for-the-badge&logo=go" alt="Go Version"></a>
+            <a href="https://aws.amazon.com/"><img src="https://img.shields.io/badge/AWS-Cloud-FF9900?style=for-the-badge&logo=amazon-aws" alt="AWS"></a>
+        </div>
+
+        <!-- Main Features Section -->
+        <section class="mb-16">
+            <h2 class="text-4xl font-bold text-center mb-8 text-white">Main Features</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Natural Language Interface</h3>
+                    <p class="text-gray-400">Describe your desired infrastructure in plain English, and let the AI handle the rest.</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Multi-AI Provider Support</h3>
+                    <p class="text-gray-400">Flexibly switch between OpenAI, Google Gemini, and Anthropic models.</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Visual Web Dashboard</h3>
+                    <p class="text-gray-400">Manage and monitor your infrastructure through an intuitive web interface.</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Terraform-like State</h3>
+                    <p class="text-gray-400">Maintains an accurate state of your infrastructure to prevent drift.</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Conflict Detection</h3>
+                    <p class="text-gray-400">Safely execute plans with built-in conflict detection and dry-run mode.</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-2 text-indigo-400">Broad AWS Resource Support</h3>
+                    <p class="text-gray-400">Support for VPC, EC2, Security Groups, Auto Scaling Groups, and ALBs.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Simple Demo Section -->
+        <section class="mb-16">
+            <h2 class="text-4xl font-bold text-center mb-8 text-white">Simple Demo</h2>
+            <div class="bg-gray-800 p-8 rounded-lg shadow-lg">
+                <p class="text-lg text-gray-400 mb-4">Prompt:</p>
+                <div class="code-block mb-6">
+                    <p>"Create an EC2 for hosting an Apache Server with a dedicated security group that allows inbound HTTP (port 80) and SSH (port 22) traffic."</p>
+                </div>
+                <p class="text-lg text-gray-400 mb-4">Result:</p>
+                <p class="text-gray-400 mb-6">The agent creates a detailed execution plan to provision an EC2 instance and a corresponding security group with the specified rules, then awaits your approval before applying the changes.</p>
+                <!-- Demo Image -->
+                <div class="flex justify-center">
+                    <img src="images/simple-demo.svg" alt="Simple Demo Result" class="rounded-lg shadow-2xl w-full" style="max-width: 1150px;">
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced Demo Section -->
+        <section class="mb-16">
+            <h2 class="text-4xl font-bold text-center mb-8 text-white">Advanced Demo</h2>
+            <div class="bg-gray-800 p-8 rounded-lg shadow-lg">
+                <p class="text-lg text-gray-400 mb-4">Prompt:</p>
+                <div class="code-block mb-6">
+                    <p>"Create a production VPC with a CIDR block of 10.0.0.0/16 across two availability zones. Set up public subnets (10.0.1.0/24 and 10.0.2.0/24) for internet-facing load balancers. Create private subnets for application servers (10.0.11.0/24 and 10.0.12.0/24). Set up dedicated database subnets (10.0.21.0/24 and 10.0.22.0/24). Configure Internet Gateway and NAT Gateway for proper routing."</p>
+                </div>
+                <p class="text-lg text-gray-400 mb-4">Result:</p>
+                <p class="text-gray-400 mb-6">The agent generates a comprehensive plan to build a multi-AZ, multi-tier VPC network architecture, including all necessary subnets, gateways, and routing configurations, ready for a production workload.</p>
+                <!-- Placeholder for screenshot or video. Replace with actual content. -->
+                <div class="bg-gray-700 h-64 rounded-lg flex items-center justify-center">
+                    <p class="text-gray-500">Screenshot or Video of the result here</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Additional Information Section -->
+        <footer class="text-center text-gray-500">
+            <p class="mb-4">We welcome contributions! Please read our <a href="https://github.com/VersusControl/ai-infrastructure-agent/blob/main/README.md#contributing" class="text-indigo-400 hover:underline">contribution guidelines</a> to get started.</p>
+            <div class="space-x-4 mb-4">
+                <a href="architecture-overview.md" class="hover:underline">Docs</a>
+                <span>&bull;</span>
+                <a href="https://github.com/VersusControl/ai-infrastructure-agent/issues" class="hover:underline">Issues</a>
+                <span>&bull;</span>
+                <a href="https://github.com/VersusControl/ai-infrastructure-agent/discussions" class="hover:underline">Discussions</a>
+            </div>
+            <p>Licensed under the <a href="LICENSE" class="text-indigo-400 hover:underline">MIT License</a>.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('active');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            
+            if (!mobileMenuBtn.contains(event.target) && !mobileMenu.contains(event.target)) {
+                mobileMenu.classList.remove('active');
+            }
+        });
+    </script>
+
+</body>
+</html>

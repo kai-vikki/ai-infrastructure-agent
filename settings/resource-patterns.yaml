@@ -1,0 +1,523 @@
+# Resource Pattern Recognition Configuration
+# This eliminates hardcoded string matching throughout the codebase
+
+resource_identification:
+  # AWS Resource ID patterns
+  id_patterns:
+    # AWS resource IDs with specific prefixes
+    vpc: ['^vpc-[a-zA-Z0-9]{8,17}$']
+    subnet: [
+      '^subnet-[a-zA-Z0-9]{8,17}$',
+      '^subnet-\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$'
+    ]
+    security_group: ['^sg-[a-zA-Z0-9]{8,17}$']
+    ec2_instance: ['^i-[a-zA-Z0-9]{8,17}$']
+    internet_gateway: ['^igw-[a-zA-Z0-9]{8,17}$']
+    nat_gateway: ['^nat-[a-zA-Z0-9]{8,17}$']
+    route_table: ['^rtb-[a-zA-Z0-9]{8,17}$']
+    launch_template: ['^lt-[a-zA-Z0-9]{8,17}$']
+    
+    # Load balancer ARN patterns
+    load_balancer: [
+      '^arn:aws:elasticloadbalancing:.*:loadbalancer/app/.*',
+      '^arn:aws:elasticloadbalancing:.*:loadbalancer/net/.*',
+      '^arn:aws:elasticloadbalancing:.*:loadbalancer/gw/.*'
+    ]
+    target_group: ['^arn:aws:elasticloadbalancing:.*:targetgroup/.*']
+    
+    # Auto Scaling Group ARN patterns
+    auto_scaling_group: ['^arn:aws:autoscaling:.*:autoScalingGroup:.*']
+    
+    # RDS patterns (user-defined names - typically longer and don't match AWS prefix-hex format)
+    rds_instance: [
+      '^(rds|database|db|postgres|mysqloracle|sqlserver)-[a-zA-Z0-9]{2,62}$'
+    ]
+    db_subnet_group: [
+      '^(rds.*subnet.*group|database.*subnet.*group|db.*subnet.*group|.*subnet.*group)-[a-zA-Z0-9]{2,254}$'
+    ]
+
+  # Name-based patterns (less reliable, used as fallback)
+  name_patterns:
+    vpc:
+      - 'create.*vpc'
+      
+    subnet:
+      - 'create.*subnet'
+      
+    security_group:
+      - 'create.*security.*group'
+      
+    ec2_instance:
+      - 'create.*instance'
+      - 'create.*ec2'
+      
+    load_balancer:
+      - 'create.*load.*balancer'
+      
+    target_group:
+      - 'create.*target.*group'
+      
+    launch_template:
+      - 'create.*launch.*template'
+      
+    auto_scaling_group:
+      - 'create.*auto.*scaling.*group'
+      - 'create.*scaling.*group'
+      
+    internet_gateway:
+      - 'create.*internet.*gateway'
+      
+    nat_gateway:
+      - 'create.*nat.*gateway'
+      
+    route_table:
+      - 'create.*route.*table'
+      
+    rds_instance:
+      - 'create.*rds'
+      
+    db_subnet_group:
+      - 'create.*db.*subnet.*group'
+      - 'create.*subnet.*group'
+    
+  # Description-based patterns (least reliable, used for inference)
+  description_patterns:
+    vpc:
+      - 'create.*new.*vpc'
+      - 'create.*vpc.*for.*'
+      - 'virtual private cloud'
+      - 'network isolation'
+      - 'vpc creation'
+      - 'vpc for.*'
+      
+    subnet:
+      - 'create.*subnet.*in.*vpc'
+      - 'create.*first.*subnet'
+      - 'create.*second.*subnet'
+      - 'create.*public.*subnet'
+      - 'create.*private.*subnet'
+      - 'create.*database.*subnet'
+      - 'public subnet'
+      - 'private subnet'
+      
+    security_group:
+      - 'security group'
+      - 'firewall rules'
+      - 'network security'
+      - 'access control'
+      
+    ec2_instance:
+      - 'ec2 instance'
+      - 'virtual machine'
+      - 'compute instance'
+      - 'server instance'
+      
+    load_balancer:
+      - 'load balancer'
+      - 'traffic distribution'
+      - 'application load balancer'
+      - 'network load balancer'
+      
+    auto_scaling_group:
+      - 'auto scaling'
+      - 'scaling group'
+      - 'autoscaling group'
+      - 'instance scaling'
+      
+    internet_gateway:
+      - 'create.*internet.*gateway'
+      - 'internet gateway.*attach'
+      - 'internet gateway'
+      
+    route_table:
+      - 'create.*route.*table.*for'
+      - 'public route table'
+      - 'private route table'
+      - 'route table'
+      
+    db_subnet_group:
+      - 'create.*db.*subnet.*group'
+      - 'subnet.*group.*for.*rds'
+      - 'db subnet group'
+      
+    rds_instance:
+      - 'rds database'
+      - 'relational database'
+      - 'database instance'
+      - 'managed database'
+
+# Tool name to resource type mapping patterns
+tool_resource_patterns:
+  
+  # VPC patterns
+  vpc: ['.*create.*vpc.*', '.*vpc.*', '.*virtual.*private.*cloud.*']
+  
+  # Subnet patterns  
+  subnet: ['.*create.*subnet.*', '.*subnet.*']
+  
+  # Security Group patterns
+  security_group: ['.*create.*security.*group.*', '.*security.*group.*', '.*sg.*']
+  
+  # Database patterns
+  rds_instance: ['.*create.*rds.*', '.*rds.*', '.*database.*', '.*db.*instance.*', '.*create.*db.*']
+  db_subnet_group: ['.*create.*db.*subnet.*group.*', '.*db.*subnet.*group.*']
+  
+  # EC2 patterns
+  ec2_instance: ['.*create.*ec2.*instance.*', '.*ec2.*instance.*', '.*create.*ec2.*', '.*vm.*']
+  
+  # Load Balancer patterns
+  load_balancer: ['.*create.*load.*balancer.*', '.*load.*balancer.*', '.*alb.*', '.*elb.*', '.*nlb.*']
+  target_group: ['.*create.*target.*group.*', '.*target.*group.*', '.*tg.*']
+  
+  # Auto Scaling patterns
+  auto_scaling_group: ['.*create.*auto.*scaling.*group.*', '.*auto.*scaling.*group.*', '.*asg.*']
+  launch_template: ['.*create.*launch.*template.*', '.*launch.*template.*', '.*lt.*']
+  
+  # Networking patterns
+  internet_gateway: ['.*create.*internet.*gateway$', '^create.*internet.*gateway$', 'create-internet-gateway']
+  nat_gateway: ['.*create.*nat.*gateway$', '^create.*nat.*gateway$', 'create-nat-gateway']
+  route_table: ['.*create.*route.*table$', '^create.*route.*table$', 'create-.*route-table']
+
+# Resource hierarchy and relationships
+resource_relationships:
+  # Parent -> Children mapping
+  vpc:
+    - subnet
+    - security_group  
+    - internet_gateway
+    - route_table
+    
+  subnet:
+    - ec2_instance
+    - nat_gateway
+    - rds_instance
+    
+  security_group:
+    - ec2_instance
+    - load_balancer
+    - rds_instance
+    
+  load_balancer:
+    - target_group
+    
+  auto_scaling_group:
+    - launch_template
+    - target_group
+    
+  launch_template:
+    - ec2_instance # virtual relationship
+    
+  # Dependencies (what this resource typically needs)
+  dependencies:
+    subnet: [vpc]
+    security_group: [vpc]
+    ec2_instance: [subnet, security_group]
+    load_balancer: [subnet, security_group]
+    target_group: [vpc]
+    auto_scaling_group: [launch_template, subnet]
+    nat_gateway: [subnet]
+    rds_instance: [db_subnet_group, security_group]
+    db_subnet_group: [subnet]
+
+# Value Type Inference Patterns
+value_type_inference:
+  default_vpc:
+    description_patterns:
+      - "default.*vpc"
+      - "vpc.*default"
+    name_patterns:
+      - "default.*vpc"
+      - "vpc.*default"
+    required_terms: ["vpc"]
+    optional_terms: ["default"]
+
+  existing_vpc:
+    description_patterns:
+      - "existing.*vpc"
+      - "vpc.*id"
+      - "vpc.*existing"
+    name_patterns:
+      - "existing.*vpc"
+      - "vpc.*id"
+    required_terms: ["vpc"]
+    optional_terms: ["existing", "id"]
+
+  default_subnet:
+    description_patterns:
+      - "default.*subnet"
+      - "subnet.*default"
+    name_patterns:
+      - "default.*subnet"
+      - "subnet.*default"
+    required_terms: ["subnet"]
+    optional_terms: ["default"]
+
+  subnets_in_vpc:
+    description_patterns:
+      - "subnets.*vpc"
+      - "subnet.*list.*vpc"
+    name_patterns:
+      - "subnets.*vpc"
+      - "vpc.*subnets"
+    required_terms: ["subnet", "vpc"]
+    optional_terms: []
+
+  latest_ami:
+    description_patterns:
+      - "latest.*ami"
+      - "ami.*latest"
+      - "recent.*ami"
+      - "get.*latest.*ami"
+      - "get.*ami"
+    name_patterns:
+      - "latest.*ami"
+      - "ami.*latest"
+      - "get.*ami"
+      - "ami"
+    required_terms: ["ami"]
+    optional_terms: ["latest", "recent", "get"]
+
+  available_azs:
+    description_patterns:
+      - "availability.*zone"
+      - "az.*available"
+      - "available.*az"
+    name_patterns:
+      - "availability.*zone"
+      - "az.*available"
+    required_terms: ["availability", "zone"]
+    optional_terms: []
+
+  load_balancer_arn:
+    description_patterns:
+      - "load.*balancer.*arn"
+      - "alb.*arn"
+      - "elb.*arn"
+    name_patterns:
+      - "load.*balancer.*arn"
+      - "alb.*arn"
+      - "elb.*arn"
+    required_terms: ["arn"]
+    optional_terms: ["load", "balancer", "alb", "elb"]
+
+  target_group_arn:
+    description_patterns:
+      - "target.*group.*arn"
+    name_patterns:
+      - "target.*group.*arn"
+    required_terms: ["target", "group", "arn"]
+    optional_terms: []
+
+  launch_template_id:
+    description_patterns:
+      - "launch.*template.*id"
+    name_patterns:
+      - "launch.*template.*id"
+    required_terms: ["launch", "template", "id"]
+    optional_terms: []
+
+  security_group_id_ref:
+    description_patterns:
+      - "security.*group.*id"
+    name_patterns:
+      - "security.*group.*id"
+    required_terms: ["security", "group", "id"]
+    optional_terms: []
+
+  db_subnet_group_name:
+    description_patterns:
+      - "db.*subnet.*group.*name"
+      - "database.*subnet.*group.*name"
+    name_patterns:
+      - "db.*subnet.*group.*name"
+      - "database.*subnet.*group.*name"
+    required_terms: ["subnet", "group", "name"]
+    optional_terms: ["db", "database"]
+
+  auto_scaling_group_arn:
+    description_patterns:
+      - "auto.*scaling.*group.*arn"
+      - "asg.*arn"
+    name_patterns:
+      - "auto.*scaling.*group.*arn"
+      - "asg.*arn"
+    required_terms: ["auto", "scaling", "group", "arn"]
+    optional_terms: ["asg"]
+
+  auto_scaling_group_name:
+    description_patterns:
+      - "auto.*scaling.*group.*name"
+      - "asg.*name"
+    name_patterns:
+      - "auto.*scaling.*group.*name"
+      - "asg.*name"
+    required_terms: ["auto", "scaling", "group", "name"]
+    optional_terms: ["asg"]
+
+  rds_endpoint:
+    description_patterns:
+      - "rds.*endpoint"
+      - "database.*endpoint"
+      - "db.*endpoint"
+    name_patterns:
+      - "rds.*endpoint"
+      - "database.*endpoint"
+      - "db.*endpoint"
+    required_terms: ["endpoint"]
+    optional_terms: ["rds", "database", "db"]
+
+  # Common infrastructure value types
+  vpc_cidr:
+    description_patterns:
+      - "vpc.*cidr"
+      - "create.*vpc.*cidr"
+      - "vpc.*block"
+    name_patterns:
+      - "vpc.*cidr"
+      - "create.*vpc"
+    required_terms: ["vpc"]
+    optional_terms: ["cidr", "create", "block"]
+
+  cidr_block:
+    description_patterns:
+      - "cidr.*block"
+      - "cidr"
+      - ".*\\.0\\.0\\.0/[0-9]+"
+    name_patterns:
+      - "cidr"
+      - "block"
+    required_terms: ["cidr"]
+    optional_terms: ["block"]
+
+  subnet_cidr:
+    description_patterns:
+      - "subnet.*cidr"
+      - "create.*subnet.*cidr"
+      - "subnet.*block"
+    name_patterns:
+      - "subnet.*cidr"
+      - "create.*subnet"
+    required_terms: ["subnet"]
+    optional_terms: ["cidr", "create", "block", "public", "private"]
+
+  instance_type:
+    description_patterns:
+      - "instance.*type"
+      - "t[2-4]\\.(nano|micro|small|medium|large|xlarge)"
+      - "m[3-6]\\.(large|xlarge)"
+      - "c[3-6]\\.(large|xlarge)"
+    name_patterns:
+      - "instance.*type"
+      - "type"
+    required_terms: ["instance"]
+    optional_terms: ["type", "t2", "t3", "t4", "m5", "c5"]
+
+  rds_instance_class:
+    description_patterns:
+      - "rds.*instance.*class"
+      - "db\\.t[2-4]\\.(micro|small|medium)"
+      - "database.*instance.*class"
+      - "create.*rds"
+      - "rds.*mysql"
+      - "rds.*engine"
+    name_patterns:
+      - "rds.*instance"
+      - "db.*instance"
+      - "database"
+      - "create.*rds"
+      - "create.*database"
+    required_terms: ["rds"]
+    optional_terms: ["instance", "class", "db", "database", "create", "mysql", "engine"]
+
+  port:
+    description_patterns:
+      - "port.*[0-9]+"
+      - "traffic.*port"
+      - "allow.*port"
+    name_patterns:
+      - "port"
+      - "security.*group"
+    required_terms: ["port"]
+    optional_terms: ["traffic", "allow", "80", "443", "22", "3306"]
+
+  security_group_port:
+    description_patterns:
+      - "security.*group.*port"
+      - "configure.*security.*group"
+      - "allow.*traffic.*port"
+    name_patterns:
+      - "security.*group"
+      - "configure.*security"
+    required_terms: ["security", "group"]
+    optional_terms: ["port", "traffic", "configure", "allow"]
+
+  select_subnets_for_alb:
+    description_patterns:
+      - "select.*subnets.*for.*alb"
+      - "select.*subnets.*load.*balancer"
+      - "alb.*subnets"
+      - "subnets.*for.*alb"
+      - "choose.*subnets.*alb"
+      - "availability.*zones.*for.*alb"
+    name_patterns:
+      - "select.*subnets.*alb"
+      - "subnets.*for.*alb"
+      - "alb.*subnets"
+      - "select.*subnets.*load.*balancer"
+    required_terms: ["subnets", "alb"]
+    optional_terms: ["select", "for", "load", "balancer", "availability", "zones"]
+
+  alb_arn:
+    description_patterns:
+      - "application.*load.*balancer"
+      - "alb.*arn"
+      - "load.*balancer.*arn"
+    name_patterns:
+      - "load.*balancer"
+      - "alb"
+      - "application.*load"
+    required_terms: ["load", "balancer"]
+    optional_terms: ["application", "alb", "arn"]
+
+  load_balancer:
+    description_patterns:
+      - "load.*balancer"
+      - "application.*load.*balancer"
+      - "create.*load.*balancer"
+    name_patterns:
+      - "load.*balancer"
+      - "alb"
+      - "create.*load"
+    required_terms: ["load", "balancer"]
+    optional_terms: ["application", "create", "alb"]
+
+  ami_id:
+    description_patterns:
+      - "ami.*id"
+      - "image.*id"
+      - "amazon.*machine.*image"
+    name_patterns:
+      - "ami.*id"
+      - "image"
+    required_terms: ["ami"]
+    optional_terms: ["id", "image", "amazon", "machine"]
+
+  aws_region:
+    description_patterns:
+      - "aws.*region"
+      - "region"
+      - "us-[a-z]+-[0-9]+"
+      - "eu-[a-z]+-[0-9]+"
+    name_patterns:
+      - "region"
+      - "aws.*region"
+    required_terms: ["region"]
+    optional_terms: ["aws", "us", "eu"]
+
+  unknown:
+    description_patterns:
+      - ".*"
+    name_patterns:
+      - ".*"
+    required_terms: []
+    optional_terms: []

@@ -1,0 +1,108 @@
+# Resource Field Mapping Configuration
+# This eliminates hardcoded field mapping logic throughout the codebase
+
+resource_fields:
+  # ALB/Load Balancer resources
+  load_balancer:
+    arn: [loadBalancerArn, load_balancer_arn, arn]
+    id: [loadBalancerId, load_balancer_id, resourceId]
+    dns_name: [dnsName, dns_name, hostname]
+    name: [loadBalancerName, load_balancer_name, name]
+    
+  target_group:
+    arn: [targetGroupArn, target_group_arn, arn]
+    id: [targetGroupId, target_group_id, resourceId]
+    name: [targetGroupName, target_group_name, name]
+    
+  # Compute resources
+  ec2_instance:
+    id: [instanceId, instance_id, resourceId]
+    public_ip: [publicIpAddress, public_ip, publicIP]
+    private_ip: [privateIpAddress, private_ip, privateIP]
+    state: [state, instance_state, status]
+    type: [instanceType, instance_type, type]
+    
+  auto_scaling_group:
+    name: [autoScalingGroupName, auto_scaling_group_name, name]
+    arn: [autoScalingGroupArn, auto_scaling_group_arn, arn]
+    id: [autoScalingGroupId, auto_scaling_group_id, resourceId]
+    
+  launch_template:
+    id: [launchTemplateId, launch_template_id, templateId, resourceId]
+    name: [launchTemplateName, launch_template_name, name]
+    version: [version, template_version, latest_version]
+    
+  # Networking resources
+  vpc:
+    id: [vpcId, vpc_id, resourceId]
+    cidr: [cidrBlock, cidr_block, cidr]
+    state: [state, vpc_state, status]
+    
+  subnet:
+    id: [subnetId, subnet_id, resourceId]
+    cidr: [cidrBlock, cidr_block, cidr]
+    az: [availabilityZone, availability_zone, az]
+    vpc_id: [vpcId, vpc_id, vpc]
+    type: [subnetType, subnet_type, type] # public/private
+    
+  security_group:
+    id: [securityGroupId, security_group_id, groupId, resourceId]
+    name: [groupName, group_name, name]
+    description: [description, group_description]
+    vpc_id: [vpcId, vpc_id, vpc]
+    
+  # Networking infrastructure
+  internet_gateway:
+    id: [internetGatewayId, internet_gateway_id, igw_id, resourceId]
+    vpc_id: [vpcId, vpc_id, vpc]
+    state: [state, attachment_state, status]
+    
+  nat_gateway:
+    id: [natGatewayId, nat_gateway_id, resourceId]
+    subnet_id: [subnetId, subnet_id, subnet]
+    state: [state, nat_gateway_state, status]
+    public_ip: [natGatewayAddress, public_ip, elastic_ip]
+    
+  route_table:
+    id: [routeTableId, route_table_id, resourceId]
+    vpc_id: [vpcId, vpc_id, vpc]
+    
+  # Database resources
+  rds_instance:
+    id: [dbInstanceId, db_instance_id, instanceId, resourceId]
+    identifier: [dbInstanceIdentifier, db_instance_identifier, identifier]
+    endpoint: [endpoint, db_endpoint, address]
+    port: [port, db_port]
+    engine: [engine, db_engine, database_engine]
+    status: [dbInstanceStatus, db_instance_status, status]
+    
+  db_subnet_group:
+    name: [dbSubnetGroupName, db_subnet_group_name, name]
+    id: [dbSubnetGroupId, db_subnet_group_id, resourceId]
+    description: [dbSubnetGroupDescription, description]
+    vpc_id: [vpcId, vpc_id, vpc]
+
+# Default fallback order for unknown resources
+default_field_priorities:
+  id: [resourceId, id, resource_id]
+  arn: [arn, resourceArn, resource_arn]
+  name: [name, resourceName, resource_name]
+  endpoint: [endpoint, address, url, dns_name]
+  state: [state, status, resource_state]
+  vpc_id: [vpcId, vpc_id, vpc]
+  subnet_id: [subnetId, subnet_id, subnet]
+  description: [description, resource_description]
+
+# Special field transformations
+field_transformations:
+  # Convert state values to standard format
+  state:
+    available: [available, active, running, ready]
+    pending: [pending, creating, launching]
+    stopped: [stopped, stopped, terminated]
+    
+  # Convert boolean strings to actual booleans
+  boolean_fields: [isDefault, is_default, enabled, disabled]
+  
+  # Fields that should be treated as arrays
+  array_fields: [subnets, instances, rules, targets, attachments]

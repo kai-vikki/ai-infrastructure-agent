@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/google/uuid"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 )
 
@@ -26,22 +26,22 @@ type CoordinatorWebAPI struct {
 
 // APIRequest represents a request to the coordinator API
 type APIRequest struct {
-	Request     string                 `json:"request"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
-	Options     map[string]interface{} `json:"options,omitempty"`
-	RequestID   string                 `json:"request_id,omitempty"`
-	Timestamp   time.Time              `json:"timestamp,omitempty"`
+	Request    string                 `json:"request"`
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	Options    map[string]interface{} `json:"options,omitempty"`
+	RequestID  string                 `json:"request_id,omitempty"`
+	Timestamp  time.Time              `json:"timestamp,omitempty"`
 }
 
 // APIResponse represents a response from the coordinator API
 type APIResponse struct {
-	RequestID   string                 `json:"request_id"`
-	Status      string                 `json:"status"`
-	Message     string                 `json:"message,omitempty"`
-	Data        map[string]interface{} `json:"data,omitempty"`
-	Error       string                 `json:"error,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
-	ExecutionTime time.Duration        `json:"execution_time,omitempty"`
+	RequestID     string                 `json:"request_id"`
+	Status        string                 `json:"status"`
+	Message       string                 `json:"message,omitempty"`
+	Data          map[string]interface{} `json:"data,omitempty"`
+	Error         string                 `json:"error,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	ExecutionTime time.Duration          `json:"execution_time,omitempty"`
 }
 
 // WebSocketMessage represents a WebSocket message
@@ -332,7 +332,7 @@ func (cwa *CoordinatorWebAPI) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		response, err := cwa.processWebSocketMessage(&message)
 		if err != nil {
 			cwa.logger.WithError(err).Error("Failed to process WebSocket message")
-			response = WebSocketMessage{
+			response = &WebSocketMessage{
 				Type: "error",
 				Data: map[string]interface{}{
 					"error": err.Error(),
@@ -383,17 +383,17 @@ func (cwa *CoordinatorWebAPI) processNaturalLanguageRequest(ctx context.Context,
 	}
 
 	result := map[string]interface{}{
-		"original_request":    req.Request,
-		"decomposed_tasks":    decompositionResult,
-		"execution_plan":      executionPlan,
-		"execution_results":   executionResults,
-		"status":              "processed",
+		"original_request":  req.Request,
+		"decomposed_tasks":  decompositionResult,
+		"execution_plan":    executionPlan,
+		"execution_results": executionResults,
+		"status":            "processed",
 	}
 
 	cwa.logger.WithFields(map[string]interface{}{
-		"request_id":    req.RequestID,
-		"task_count":    len(decompositionResult),
-		"executed":      executionResults != nil,
+		"request_id": req.RequestID,
+		"task_count": len(decompositionResult),
+		"executed":   executionResults != nil,
 	}).Info("Natural language request processed successfully")
 
 	return result, nil
@@ -412,19 +412,19 @@ func (cwa *CoordinatorWebAPI) processTaskDecomposition(ctx context.Context, req 
 
 	// Convert result to map
 	resultMap := map[string]interface{}{
-		"original_request":     result.OriginalRequest,
-		"identified_patterns":  result.IdentifiedPatterns,
-		"decomposed_tasks":     result.DecomposedTasks,
-		"task_dependencies":    result.TaskDependencies,
-		"execution_plan":       result.ExecutionPlan,
-		"estimated_duration":   result.EstimatedDuration,
-		"risk_assessment":      result.RiskAssessment,
-		"status":               "decomposed",
+		"original_request":    result.OriginalRequest,
+		"identified_patterns": result.IdentifiedPatterns,
+		"decomposed_tasks":    result.DecomposedTasks,
+		"task_dependencies":   result.TaskDependencies,
+		"execution_plan":      result.ExecutionPlan,
+		"estimated_duration":  result.EstimatedDuration,
+		"risk_assessment":     result.RiskAssessment,
+		"status":              "decomposed",
 	}
 
 	cwa.logger.WithFields(map[string]interface{}{
-		"request_id":        req.RequestID,
-		"task_count":        len(result.DecomposedTasks),
+		"request_id":         req.RequestID,
+		"task_count":         len(result.DecomposedTasks),
 		"estimated_duration": result.EstimatedDuration,
 	}).Info("Task decomposition request processed successfully")
 
@@ -453,13 +453,13 @@ func (cwa *CoordinatorWebAPI) processTaskExecution(ctx context.Context, req *API
 		if !ok {
 			continue
 		}
-		
+
 		task := &Task{
-			ID:          uuid.New().String(),
-			Type:        taskMap["type"].(string),
-			Parameters:  taskMap["parameters"].(map[string]interface{}),
-			Status:      TaskStatusPending,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			Type:       taskMap["type"].(string),
+			Parameters: taskMap["parameters"].(map[string]interface{}),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
 		}
 		executionTasks = append(executionTasks, task)
 	}
@@ -510,8 +510,8 @@ func (cwa *CoordinatorWebAPI) processWebSocketMessage(message *WebSocketMessage)
 	case "status":
 		status := cwa.getCoordinatorStatus()
 		return &WebSocketMessage{
-			Type: "status_response",
-			Data: status,
+			Type:      "status_response",
+			Data:      status,
 			Timestamp: time.Now(),
 		}, nil
 	case "decompose":
@@ -519,18 +519,18 @@ func (cwa *CoordinatorWebAPI) processWebSocketMessage(message *WebSocketMessage)
 		if !exists {
 			return nil, fmt.Errorf("request field is required")
 		}
-		
+
 		requestStr, ok := request.(string)
 		if !ok {
 			return nil, fmt.Errorf("request must be a string")
 		}
-		
+
 		ctx := context.Background()
 		result, err := cwa.coordinator.decomposeWithLLM(ctx, requestStr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decompose request: %w", err)
 		}
-		
+
 		return &WebSocketMessage{
 			Type: "decomposition_response",
 			Data: map[string]interface{}{
@@ -553,11 +553,11 @@ func (cwa *CoordinatorWebAPI) createExecutionPlan(ctx context.Context, tasks []m
 	executionTasks := make([]*Task, 0, len(tasks))
 	for _, taskData := range tasks {
 		task := &Task{
-			ID:          uuid.New().String(),
-			Type:        taskData["type"].(string),
-			Parameters:  taskData["parameters"].(map[string]interface{}),
-			Status:      TaskStatusPending,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			Type:       taskData["type"].(string),
+			Parameters: taskData["parameters"].(map[string]interface{}),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
 		}
 		executionTasks = append(executionTasks, task)
 	}
@@ -589,11 +589,11 @@ func (cwa *CoordinatorWebAPI) executeTasks(ctx context.Context, tasks []map[stri
 	executionTasks := make([]*Task, 0, len(tasks))
 	for _, taskData := range tasks {
 		task := &Task{
-			ID:          uuid.New().String(),
-			Type:        taskData["type"].(string),
-			Parameters:  taskData["parameters"].(map[string]interface{}),
-			Status:      TaskStatusPending,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			Type:       taskData["type"].(string),
+			Parameters: taskData["parameters"].(map[string]interface{}),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
 		}
 		executionTasks = append(executionTasks, task)
 	}
@@ -610,7 +610,7 @@ func (cwa *CoordinatorWebAPI) executeTasks(ctx context.Context, tasks []map[stri
 // getCoordinatorStatus gets the current status of the coordinator
 func (cwa *CoordinatorWebAPI) getCoordinatorStatus() map[string]interface{} {
 	status := map[string]interface{}{
-		"coordinator_id":   cwa.coordinator.ID(),
+		"coordinator_id":   cwa.coordinator.GetInfo().ID,
 		"coordinator_type": cwa.coordinator.GetAgentType(),
 		"status":           cwa.coordinator.GetStatus(),
 		"capabilities":     cwa.coordinator.GetCapabilities(),
@@ -664,7 +664,7 @@ func (cwa *CoordinatorWebAPI) SetupRoutes(router *mux.Router) {
 	router.HandleFunc("/api/coordinator/execute", cwa.HandleTaskExecution).Methods("POST")
 	router.HandleFunc("/api/coordinator/decision", cwa.HandleIntelligentDecision).Methods("POST")
 	router.HandleFunc("/api/coordinator/status", cwa.HandleStatus).Methods("GET")
-	
+
 	// WebSocket route
 	router.HandleFunc("/api/coordinator/ws", cwa.HandleWebSocket).Methods("GET")
 

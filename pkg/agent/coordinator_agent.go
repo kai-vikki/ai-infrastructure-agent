@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tmc/langchaingo/llms"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/interfaces"
-	"github.com/versus-control/ai-infrastructure-agent/pkg/tools"
-	"github.com/tmc/langchaingo/llms"
 )
 
 // =============================================================================
@@ -38,11 +37,11 @@ type CoordinatorAgent struct {
 
 // OrchestrationEngine manages task execution flow
 type OrchestrationEngine struct {
-	coordinator    *CoordinatorAgent
-	taskScheduler  *TaskScheduler
-	dependencyMgr  *DependencyManager
+	coordinator      *CoordinatorAgent
+	taskScheduler    *TaskScheduler
+	dependencyMgr    *DependencyManager
 	resultAggregator *ResultAggregator
-	logger         *logging.Logger
+	logger           *logging.Logger
 }
 
 // TaskScheduler manages task scheduling and execution
@@ -66,16 +65,16 @@ type ResultAggregator struct {
 // NewCoordinatorAgent creates a new coordinator agent
 func NewCoordinatorAgent(baseAgent *BaseAgent, llm llms.Model, awsClient *aws.Client, logger *logging.Logger) *CoordinatorAgent {
 	agent := &CoordinatorAgent{
-		BaseAgent:        baseAgent,
-		taskQueue:        make(chan *Task, 100),
-		activeTasks:      make(map[string]*Task),
-		completedTasks:   make(map[string]*Task),
-		failedTasks:      make(map[string]*Task),
-		taskDependencies: make(map[string][]string),
+		BaseAgent:         baseAgent,
+		taskQueue:         make(chan *Task, 100),
+		activeTasks:       make(map[string]*Task),
+		completedTasks:    make(map[string]*Task),
+		failedTasks:       make(map[string]*Task),
+		taskDependencies:  make(map[string][]string),
 		agentCapabilities: make(map[AgentType][]AgentCapability),
-		llm:              llm,
-		awsClient:        awsClient,
-		logger:           logger,
+		llm:               llm,
+		awsClient:         awsClient,
+		logger:            logger,
 	}
 
 	// Set agent type
@@ -137,9 +136,9 @@ func (ca *CoordinatorAgent) GetSpecializedTools() []interfaces.MCPTool {
 // ProcessTask processes a coordination-related task
 func (ca *CoordinatorAgent) ProcessTask(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithFields(map[string]interface{}{
-		"agent_id":   ca.id,
-		"task_id":    task.ID,
-		"task_type":  task.Type,
+		"agent_id":  ca.id,
+		"task_id":   task.ID,
+		"task_type": task.Type,
 	}).Info("Processing coordination task")
 
 	// Update task status
@@ -191,9 +190,9 @@ func (ca *CoordinatorAgent) GetTaskQueue() chan *Task {
 func (ca *CoordinatorAgent) CoordinateWith(otherAgent SpecializedAgentInterface) error {
 	// Coordinator coordinates with all specialized agents
 	ca.logger.WithFields(map[string]interface{}{
-		"agent_id":      ca.id,
-		"other_agent":   otherAgent.GetInfo().ID,
-		"other_type":    otherAgent.GetAgentType(),
+		"agent_id":    ca.id,
+		"other_agent": otherAgent.GetInfo().ID,
+		"other_type":  otherAgent.GetAgentType(),
 	}).Info("Coordinating with specialized agent")
 
 	// Store agent capabilities for future reference
@@ -297,8 +296,8 @@ func (ca *CoordinatorAgent) decomposeRequest(ctx context.Context, task *Task) (*
 	}
 
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":      task.ID,
-		"task_count":   len(decomposedTasks),
+		"task_id":          task.ID,
+		"task_count":       len(decomposedTasks),
 		"original_request": requestStr,
 	}).Info("Request decomposed successfully")
 
@@ -331,13 +330,13 @@ func (ca *CoordinatorAgent) orchestrateTasks(ctx context.Context, task *Task) (*
 		if !ok {
 			continue
 		}
-		
+
 		orchestrationTask := &Task{
-			ID:          uuid.New().String(),
-			Type:        taskMap["type"].(string),
-			Parameters:  taskMap["parameters"].(map[string]interface{}),
-			Status:      TaskStatusPending,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			Type:       taskMap["type"].(string),
+			Parameters: taskMap["parameters"].(map[string]interface{}),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
 		}
 		orchestrationTasks = append(orchestrationTasks, orchestrationTask)
 	}
@@ -406,8 +405,8 @@ func (ca *CoordinatorAgent) aggregateResults(ctx context.Context, task *Task) (*
 	}
 
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":        task.ID,
-		"input_results":  len(resultsList),
+		"task_id":       task.ID,
+		"input_results": len(resultsList),
 	}).Info("Results aggregated successfully")
 
 	return task, nil
@@ -445,14 +444,14 @@ func (ca *CoordinatorAgent) manageDependencies(ctx context.Context, task *Task) 
 	now := time.Now()
 	task.CompletedAt = &now
 	task.Result = map[string]interface{}{
-		"input_tasks":    len(tasksList),
-		"managed_tasks":  managedTasks,
-		"status":         "dependencies_managed",
+		"input_tasks":   len(tasksList),
+		"managed_tasks": managedTasks,
+		"status":        "dependencies_managed",
 	}
 
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":      task.ID,
-		"input_tasks":  len(tasksList),
+		"task_id":     task.ID,
+		"input_tasks": len(tasksList),
 	}).Info("Dependencies managed successfully")
 
 	return task, nil
@@ -629,7 +628,7 @@ func (oe *OrchestrationEngine) ExecuteTasks(ctx context.Context, tasks []*Task) 
 	oe.logger.Info("Starting task execution orchestration")
 
 	// 1. Manage dependencies
-	managedTasks, err := oe.dependencyMgr.ManageDependencies(ctx, tasks)
+	managedTasks, err := oe.dependencyMgr.ManageDependenciesTasks(ctx, tasks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to manage dependencies: %w", err)
 	}
@@ -647,6 +646,61 @@ func (oe *OrchestrationEngine) ExecuteTasks(ctx context.Context, tasks []*Task) 
 	}
 
 	return aggregatedResult, nil
+}
+
+// createExecutionPlan creates a simple execution plan for the provided tasks
+func (oe *OrchestrationEngine) createExecutionPlan(ctx context.Context, tasks []*Task) (*ExecutionPlan, error) {
+	// Build dependencies map from task parameters (optional)
+	dependencies := make(map[string][]string)
+	for _, t := range tasks {
+		if deps, exists := t.Parameters["dependencies"]; exists {
+			if depsList, ok := deps.([]interface{}); ok {
+				var depStrings []string
+				for _, d := range depsList {
+					if ds, ok := d.(string); ok {
+						depStrings = append(depStrings, ds)
+					}
+				}
+				dependencies[t.ID] = depStrings
+			}
+		}
+	}
+
+	// Determine execution order via a basic topological sort on IDs present
+	order, err := oe.dependencyMgr.topologicalSort(dependencies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sort tasks by dependencies: %w", err)
+	}
+
+	// Convert to ExecutionContext for compatibility with API expectations
+	execContexts := make([]*ExecutionContext, 0, len(tasks))
+	for _, t := range tasks {
+		execContexts = append(execContexts, &ExecutionContext{
+			TaskID:       t.ID,
+			Parameters:   t.Parameters,
+			Dependencies: dependencies[t.ID],
+			Priority:     t.Priority,
+			Timeout:      30 * time.Minute,
+			MaxRetries:   3,
+			Status:       TaskStatusPending,
+			CreatedAt:    t.CreatedAt,
+		})
+	}
+
+	// Basic estimations
+	estimated := fmt.Sprintf("%d minutes", len(tasks)*5)
+	plan := &ExecutionPlan{
+		PlanID:            uuid.New().String(),
+		Tasks:             execContexts,
+		Dependencies:      dependencies,
+		ExecutionOrder:    order,
+		EstimatedDuration: estimated,
+		RiskAssessment:    map[string]interface{}{"overall_risk_level": "medium"},
+		CreatedAt:         time.Now(),
+		Status:            "created",
+	}
+
+	return plan, nil
 }
 
 // =============================================================================
@@ -714,7 +768,7 @@ func (ts *TaskScheduler) executeTaskGroup(ctx context.Context, tasks []*Task) ([
 func (ts *TaskScheduler) findAgentForTask(task *Task) (SpecializedAgentInterface, error) {
 	// This is a simplified implementation
 	// In a real system, this would use the agent registry to find available agents
-	
+
 	// For now, return nil as we don't have access to the agent registry here
 	// This would be implemented in the full system
 	return nil, fmt.Errorf("agent finding not implemented yet")
@@ -746,13 +800,13 @@ func (dm *DependencyManager) ManageDependencies(ctx context.Context, tasks []int
 		if !ok {
 			continue
 		}
-		
+
 		task := &Task{
-			ID:          uuid.New().String(),
-			Type:        taskMap["type"].(string),
-			Parameters:  taskMap["parameters"].(map[string]interface{}),
-			Status:      TaskStatusPending,
-			CreatedAt:   time.Now(),
+			ID:         uuid.New().String(),
+			Type:       taskMap["type"].(string),
+			Parameters: taskMap["parameters"].(map[string]interface{}),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
 		}
 		taskList = append(taskList, task)
 	}
@@ -783,6 +837,50 @@ func (dm *DependencyManager) ManageDependencies(ctx context.Context, tasks []int
 	var orderedTasks []*Task
 	for _, taskID := range executionOrder {
 		for _, task := range taskList {
+			if task.ID == taskID {
+				orderedTasks = append(orderedTasks, task)
+				break
+			}
+		}
+	}
+
+	return orderedTasks, nil
+}
+
+// ManageDependenciesTasks manages dependencies given actual Task objects
+func (dm *DependencyManager) ManageDependenciesTasks(ctx context.Context, tasks []*Task) ([]*Task, error) {
+	dm.logger.Info("Managing task dependencies (typed)")
+
+	// Build dependency graph
+	dependencyGraph := make(map[string][]string)
+	for _, task := range tasks {
+		if dependencies, exists := task.Parameters["dependencies"]; exists {
+			if depsList, ok := dependencies.([]interface{}); ok {
+				var deps []string
+				for _, dep := range depsList {
+					if depStr, ok := dep.(string); ok {
+						deps = append(deps, depStr)
+					}
+				}
+				dependencyGraph[task.ID] = deps
+			}
+		}
+		// Ensure node exists in graph even if no deps
+		if _, ok := dependencyGraph[task.ID]; !ok {
+			dependencyGraph[task.ID] = []string{}
+		}
+	}
+
+	// Topological sort to determine execution order
+	executionOrder, err := dm.topologicalSort(dependencyGraph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sort tasks by dependencies: %w", err)
+	}
+
+	// Reorder tasks according to execution order
+	var orderedTasks []*Task
+	for _, taskID := range executionOrder {
+		for _, task := range tasks {
 			if task.ID == taskID {
 				orderedTasks = append(orderedTasks, task)
 				break

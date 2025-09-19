@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/versus-control/ai-infrastructure-agent/internal/config"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
-	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/interfaces"
 )
 
@@ -20,11 +20,11 @@ import (
 type AgentFactoryImpl struct {
 	// Agent creators registry
 	creators map[AgentType]AgentCreator
-	
+
 	// Configuration
 	config *config.Config
 	logger *logging.Logger
-	
+
 	// Thread safety
 	mutex sync.RWMutex
 }
@@ -139,10 +139,13 @@ func (f *AgentFactoryImpl) createCoordinatorAgent(agentConfig *config.AgentConfi
 
 	// Create coordinator agent
 	coordinator := &CoordinatorAgent{
-		BaseAgent: baseAgent,
-		registeredAgents: make(map[string]SpecializedAgentInterface),
-		taskQueue: make(chan *Task, 100),
-		activeTasks: make(map[string]*Task),
+		BaseAgent:         baseAgent,
+		taskQueue:         make(chan *Task, 100),
+		activeTasks:       make(map[string]*Task),
+		completedTasks:    make(map[string]*Task),
+		failedTasks:       make(map[string]*Task),
+		taskDependencies:  make(map[string][]string),
+		agentCapabilities: make(map[AgentType][]AgentCapability),
 	}
 
 	// Initialize the coordinator
@@ -324,8 +327,8 @@ func (f *AgentFactoryImpl) createBaseAgent(agentConfig *config.AgentConfig, depe
 		metrics: &AgentMetrics{
 			requestsProcessed: 0,
 			tasksProcessed:    0,
-			errors:           0,
-			lastActivity:     time.Now(),
+			errors:            0,
+			lastActivity:      time.Now(),
 		},
 	}
 

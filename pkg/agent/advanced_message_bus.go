@@ -2,8 +2,8 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +14,40 @@ import (
 // =============================================================================
 // ADVANCED MESSAGE BUS
 // =============================================================================
+
+// Message represents a bus-level message (separate from AgentMessage)
+type Message struct {
+	ID        string                 `json:"id"`
+	Topic     string                 `json:"topic"`
+	Type      string                 `json:"type"`
+	From      string                 `json:"from"`
+	To        string                 `json:"to"`
+	Content   interface{}            `json:"content"`
+	Priority  MessagePriority        `json:"priority"`
+	Status    MessageStatus          `json:"status"`
+	Timestamp time.Time              `json:"timestamp"`
+	RouteID   string                 `json:"route_id"`
+	Metadata  map[string]interface{} `json:"metadata"`
+}
+
+// MessagePriority represents message priority
+type MessagePriority int
+
+const (
+	MessagePriorityLow MessagePriority = iota
+	MessagePriorityNormal
+	MessagePriorityHigh
+)
+
+// MessageStatus represents processing status of a message
+type MessageStatus string
+
+const (
+	MessageStatusPending    MessageStatus = "pending"
+	MessageStatusProcessed  MessageStatus = "processed"
+	MessageStatusFailed     MessageStatus = "failed"
+	MessageStatusDeadLetter MessageStatus = "dead_letter"
+)
 
 // AdvancedMessageBus provides advanced message routing and filtering capabilities
 type AdvancedMessageBus struct {
@@ -37,7 +71,7 @@ type Subscriber struct {
 	AgentType    AgentType              `json:"agent_type"`
 	Topics       []string               `json:"topics"`
 	Filters      []*Filter              `json:"filters"`
-	Handler      MessageHandler         `json:"-"`
+	Handler      BusMessageHandler      `json:"-"`
 	Priority     int                    `json:"priority"`
 	Active       bool                   `json:"active"`
 	CreatedAt    time.Time              `json:"created_at"`
@@ -61,13 +95,13 @@ type Route struct {
 
 // Filter represents a message filter
 type Filter struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Type        FilterType             `json:"type"`
-	Conditions  []*Condition           `json:"conditions"`
-	Active      bool                   `json:"active"`
-	CreatedAt   time.Time              `json:"created_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Type       FilterType             `json:"type"`
+	Conditions []*Condition           `json:"conditions"`
+	Active     bool                   `json:"active"`
+	CreatedAt  time.Time              `json:"created_at"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // Condition represents a filter condition
@@ -80,46 +114,46 @@ type Condition struct {
 
 // Transform represents a message transformation
 type Transform struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Operations  []*TransformOperation  `json:"operations"`
-	Active      bool                   `json:"active"`
-	CreatedAt   time.Time              `json:"created_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Operations []*TransformOperation  `json:"operations"`
+	Active     bool                   `json:"active"`
+	CreatedAt  time.Time              `json:"created_at"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // TransformOperation represents a transformation operation
 type TransformOperation struct {
-	Type      TransformType            `json:"type"`
-	Field     string                   `json:"field"`
-	Value     interface{}              `json:"value"`
-	Metadata  map[string]interface{}   `json:"metadata"`
+	Type     TransformType          `json:"type"`
+	Field    string                 `json:"field"`
+	Value    interface{}            `json:"value"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // MessageMetrics tracks message bus performance
 type MessageMetrics struct {
-	TotalMessages     int64         `json:"total_messages"`
-	ProcessedMessages int64         `json:"processed_messages"`
-	FailedMessages    int64         `json:"failed_messages"`
-	DeadLetterMessages int64        `json:"dead_letter_messages"`
-	AverageLatency    time.Duration `json:"average_latency"`
-	Throughput        float64       `json:"throughput"`
-	ActiveSubscribers int           `json:"active_subscribers"`
-	ActiveRoutes      int           `json:"active_routes"`
-	ActiveFilters     int           `json:"active_filters"`
-	LastUpdated       time.Time     `json:"last_updated"`
-	mu                sync.RWMutex
+	TotalMessages      int64         `json:"total_messages"`
+	ProcessedMessages  int64         `json:"processed_messages"`
+	FailedMessages     int64         `json:"failed_messages"`
+	DeadLetterMessages int64         `json:"dead_letter_messages"`
+	AverageLatency     time.Duration `json:"average_latency"`
+	Throughput         float64       `json:"throughput"`
+	ActiveSubscribers  int           `json:"active_subscribers"`
+	ActiveRoutes       int           `json:"active_routes"`
+	ActiveFilters      int           `json:"active_filters"`
+	LastUpdated        time.Time     `json:"last_updated"`
+	mu                 sync.RWMutex
 }
 
-// MessageHandler is a function type for handling messages
-type MessageHandler func(ctx context.Context, message *Message) error
+// BusMessageHandler is a function type for handling messages on the bus
+type BusMessageHandler func(ctx context.Context, message *Message) error
 
 // FilterType represents the type of filter
 type FilterType string
 
 const (
-	FilterTypeInclude FilterType = "include"
-	FilterTypeExclude FilterType = "exclude"
+	FilterTypeInclude   FilterType = "include"
+	FilterTypeExclude   FilterType = "exclude"
 	FilterTypeTransform FilterType = "transform"
 )
 
@@ -127,15 +161,15 @@ const (
 type Operator string
 
 const (
-	OperatorEquals     Operator = "equals"
-	OperatorNotEquals  Operator = "not_equals"
-	OperatorContains   Operator = "contains"
+	OperatorEquals      Operator = "equals"
+	OperatorNotEquals   Operator = "not_equals"
+	OperatorContains    Operator = "contains"
 	OperatorNotContains Operator = "not_contains"
-	OperatorGreater    Operator = "greater"
-	OperatorLess       Operator = "less"
-	OperatorRegex      Operator = "regex"
-	OperatorIn         Operator = "in"
-	OperatorNotIn      Operator = "not_in"
+	OperatorGreater     Operator = "greater"
+	OperatorLess        Operator = "less"
+	OperatorRegex       Operator = "regex"
+	OperatorIn          Operator = "in"
+	OperatorNotIn       Operator = "not_in"
 )
 
 // ValueType represents the type of value
@@ -164,7 +198,7 @@ const (
 // NewAdvancedMessageBus creates a new advanced message bus
 func NewAdvancedMessageBus(logger *logging.Logger) *AdvancedMessageBus {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &AdvancedMessageBus{
 		subscribers:     make(map[string][]*Subscriber),
 		routes:          make(map[string]*Route),
@@ -423,8 +457,8 @@ func (amb *AdvancedMessageBus) applyRouting(message *Message) (*Message, error) 
 				message.RouteID = route.ID
 
 				amb.logger.WithFields(map[string]interface{}{
-					"message_id": message.ID,
-					"route_id":   route.ID,
+					"message_id":  message.ID,
+					"route_id":    route.ID,
 					"destination": route.Destination,
 				}).Debug("Message routed successfully")
 			}
@@ -493,7 +527,7 @@ func (amb *AdvancedMessageBus) matchesConditions(message *Message, conditions []
 func (amb *AdvancedMessageBus) matchesCondition(message *Message, condition *Condition) bool {
 	// Get field value from message
 	fieldValue := amb.getFieldValue(message, condition.Field)
-	
+
 	// Apply operator
 	switch condition.Operator {
 	case OperatorEquals:
@@ -570,12 +604,52 @@ func (amb *AdvancedMessageBus) getFieldValue(message *Message, field string) int
 
 // compareValues compares two values
 func (amb *AdvancedMessageBus) compareValues(a, b interface{}) int {
-	// Simple comparison - in a real system, this would be more sophisticated
+	// Best-effort comparison for common types
+	switch av := a.(type) {
+	case int:
+		if bv, ok := b.(int); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	case int64:
+		if bv, ok := b.(int64); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	case float64:
+		if bv, ok := b.(float64); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	case string:
+		if bv, ok := b.(string); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	}
+	// Fallback: not comparable
 	if a == b {
 		return 0
-	}
-	if a < b {
-		return -1
 	}
 	return 1
 }
@@ -584,17 +658,17 @@ func (amb *AdvancedMessageBus) compareValues(a, b interface{}) int {
 func (amb *AdvancedMessageBus) applyTransform(message *Message, transform *Transform) (*Message, error) {
 	// Create a copy of the message
 	transformedMessage := &Message{
-		ID:         message.ID,
-		Topic:      message.Topic,
-		Type:       message.Type,
-		From:       message.From,
-		To:         message.To,
-		Content:    message.Content,
-		Priority:   message.Priority,
-		Status:     message.Status,
-		Timestamp:  message.Timestamp,
-		RouteID:    message.RouteID,
-		Metadata:   make(map[string]interface{}),
+		ID:        message.ID,
+		Topic:     message.Topic,
+		Type:      message.Type,
+		From:      message.From,
+		To:        message.To,
+		Content:   message.Content,
+		Priority:  message.Priority,
+		Status:    message.Status,
+		Timestamp: message.Timestamp,
+		RouteID:   message.RouteID,
+		Metadata:  make(map[string]interface{}),
 	}
 
 	// Copy metadata
@@ -659,7 +733,7 @@ func (amb *AdvancedMessageBus) processMessages() {
 // processMessage processes a single message
 func (amb *AdvancedMessageBus) processMessage(message *Message) {
 	startTime := time.Now()
-	
+
 	amb.logger.WithFields(map[string]interface{}{
 		"message_id": message.ID,
 		"topic":      message.Topic,
@@ -668,13 +742,13 @@ func (amb *AdvancedMessageBus) processMessage(message *Message) {
 
 	// Find subscribers for the message topic
 	subscribers := amb.getSubscribersForTopic(message.Topic)
-	
+
 	if len(subscribers) == 0 {
 		amb.logger.WithFields(map[string]interface{}{
 			"message_id": message.ID,
 			"topic":      message.Topic,
 		}).Warn("No subscribers found for topic")
-		
+
 		// Send to dead letter queue
 		amb.sendToDeadLetterQueue(message, "No subscribers found")
 		return
@@ -692,7 +766,7 @@ func (amb *AdvancedMessageBus) processMessage(message *Message) {
 			// Process message
 			if err := amb.processMessageForSubscriber(message, subscriber); err != nil {
 				amb.logger.WithError(err).WithFields(map[string]interface{}{
-					"message_id":   message.ID,
+					"message_id":    message.ID,
 					"subscriber_id": subscriber.ID,
 				}).Error("Failed to process message for subscriber")
 			} else {
@@ -855,7 +929,7 @@ func (amb *AdvancedMessageBus) updateMetrics(event string) {
 		amb.metrics.ActiveRoutes = len(amb.routes)
 		amb.metrics.ActiveFilters = len(amb.filters)
 		amb.metrics.LastUpdated = time.Now()
-		
+
 		// Calculate throughput
 		if amb.metrics.TotalMessages > 0 {
 			amb.metrics.Throughput = float64(amb.metrics.ProcessedMessages) / float64(amb.metrics.TotalMessages)
@@ -902,13 +976,13 @@ func (amb *AdvancedMessageBus) GetStatus() map[string]interface{} {
 	defer amb.mu.RUnlock()
 
 	return map[string]interface{}{
-		"started":           amb.started,
-		"subscriber_count":  len(amb.subscribers),
-		"route_count":       len(amb.routes),
-		"filter_count":      len(amb.filters),
-		"queue_size":        len(amb.messageQueue),
-		"dead_letter_size":  len(amb.deadLetterQueue),
-		"metrics":           amb.GetMetrics(),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"started":          amb.started,
+		"subscriber_count": len(amb.subscribers),
+		"route_count":      len(amb.routes),
+		"filter_count":     len(amb.filters),
+		"queue_size":       len(amb.messageQueue),
+		"dead_letter_size": len(amb.deadLetterQueue),
+		"metrics":          amb.GetMetrics(),
+		"timestamp":        time.Now().Format(time.RFC3339),
 	}
 }

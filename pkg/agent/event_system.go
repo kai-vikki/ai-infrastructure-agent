@@ -2,8 +2,8 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,16 +17,16 @@ import (
 
 // EventSystem manages event-driven communication between agents
 type EventSystem struct {
-	eventBus        *EventBus
-	eventStore      *EventStore
-	eventHandlers   map[string][]*EventHandler
-	eventFilters    map[string]*EventFilter
-	eventMetrics    *EventMetrics
-	logger          *logging.Logger
-	mu              sync.RWMutex
-	started         bool
-	ctx             context.Context
-	cancel          context.CancelFunc
+	eventBus      *EventBus
+	eventStore    *EventStore
+	eventHandlers map[string][]*EventHandler
+	eventFilters  map[string]*EventFilter
+	eventMetrics  *EventMetrics
+	logger        *logging.Logger
+	mu            sync.RWMutex
+	started       bool
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 // EventBus manages event publishing and subscription
@@ -40,34 +40,34 @@ type EventBus struct {
 
 // EventStore persists events for replay and analysis
 type EventStore struct {
-	events    []*Event
-	indexes   map[string][]*Event
-	logger    *logging.Logger
-	mu        sync.RWMutex
+	events  []*Event
+	indexes map[string][]*Event
+	logger  *logging.Logger
+	mu      sync.RWMutex
 }
 
 // EventHandler handles specific types of events
 type EventHandler struct {
-	ID          string                 `json:"id"`
-	AgentID     string                 `json:"agent_id"`
-	EventType   string                 `json:"event_type"`
-	Handler     func(ctx context.Context, event *Event) error
-	Priority    int                    `json:"priority"`
-	Active      bool                   `json:"active"`
-	CreatedAt   time.Time              `json:"created_at"`
-	LastActivity time.Time             `json:"last_activity"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID           string `json:"id"`
+	AgentID      string `json:"agent_id"`
+	EventType    string `json:"event_type"`
+	Handler      func(ctx context.Context, event *Event) error
+	Priority     int                    `json:"priority"`
+	Active       bool                   `json:"active"`
+	CreatedAt    time.Time              `json:"created_at"`
+	LastActivity time.Time              `json:"last_activity"`
+	Metadata     map[string]interface{} `json:"metadata"`
 }
 
 // EventFilter filters events based on criteria
 type EventFilter struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	EventType   string                 `json:"event_type"`
-	Conditions  []*EventCondition      `json:"conditions"`
-	Active      bool                   `json:"active"`
-	CreatedAt   time.Time              `json:"created_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	EventType  string                 `json:"event_type"`
+	Conditions []*EventCondition      `json:"conditions"`
+	Active     bool                   `json:"active"`
+	CreatedAt  time.Time              `json:"created_at"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // EventCondition represents a condition for event filtering
@@ -80,9 +80,9 @@ type EventCondition struct {
 
 // EventSubscriber subscribes to events
 type EventSubscriber struct {
-	ID           string                 `json:"id"`
-	AgentID      string                 `json:"agent_id"`
-	EventTypes   []string               `json:"event_types"`
+	ID           string   `json:"id"`
+	AgentID      string   `json:"agent_id"`
+	EventTypes   []string `json:"event_types"`
 	Handler      func(ctx context.Context, event *Event) error
 	Priority     int                    `json:"priority"`
 	Active       bool                   `json:"active"`
@@ -93,17 +93,17 @@ type EventSubscriber struct {
 
 // Event represents an event in the system
 type Event struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Source      string                 `json:"source"`
-	Target      string                 `json:"target,omitempty"`
-	Data        interface{}            `json:"data"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Version     int                    `json:"version"`
-	CorrelationID string               `json:"correlation_id,omitempty"`
-	CausationID  string                `json:"causation_id,omitempty"`
-	Status      EventStatus            `json:"status"`
+	ID            string                 `json:"id"`
+	Type          string                 `json:"type"`
+	Source        string                 `json:"source"`
+	Target        string                 `json:"target,omitempty"`
+	Data          interface{}            `json:"data"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	Timestamp     time.Time              `json:"timestamp"`
+	Version       int                    `json:"version"`
+	CorrelationID string                 `json:"correlation_id,omitempty"`
+	CausationID   string                 `json:"causation_id,omitempty"`
+	Status        EventStatus            `json:"status"`
 }
 
 // EventMetrics tracks event system performance
@@ -135,7 +135,7 @@ const (
 // NewEventSystem creates a new event system
 func NewEventSystem(logger *logging.Logger) *EventSystem {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &EventSystem{
 		eventBus: &EventBus{
 			subscribers:     make(map[string][]*EventSubscriber),
@@ -333,9 +333,9 @@ func (es *EventSystem) RegisterEventHandler(handler *EventHandler) error {
 	es.eventHandlers[handler.EventType] = append(es.eventHandlers[handler.EventType], handler)
 
 	es.logger.WithFields(map[string]interface{}{
-		"handler_id":  handler.ID,
-		"agent_id":    handler.AgentID,
-		"event_type":  handler.EventType,
+		"handler_id": handler.ID,
+		"agent_id":   handler.AgentID,
+		"event_type": handler.EventType,
 	}).Info("Event handler registered successfully")
 
 	return nil
@@ -417,7 +417,7 @@ func (es *EventSystem) processEvents() {
 // processEvent processes a single event
 func (es *EventSystem) processEvent(event *Event) {
 	startTime := time.Now()
-	
+
 	es.logger.WithFields(map[string]interface{}{
 		"event_id": event.ID,
 		"type":     event.Type,
@@ -429,13 +429,13 @@ func (es *EventSystem) processEvent(event *Event) {
 
 	// Find subscribers for the event type
 	subscribers := es.getSubscribersForEventType(event.Type)
-	
+
 	if len(subscribers) == 0 {
 		es.logger.WithFields(map[string]interface{}{
 			"event_id": event.ID,
 			"type":     event.Type,
 		}).Warn("No subscribers found for event type")
-		
+
 		// Send to dead letter queue
 		es.sendToDeadLetterQueue(event, "No subscribers found")
 		return
@@ -552,7 +552,7 @@ func (es *EventSystem) matchesEventConditions(event *Event, conditions []*EventC
 func (es *EventSystem) matchesEventCondition(event *Event, condition *EventCondition) bool {
 	// Get field value from event
 	fieldValue := es.getEventFieldValue(event, condition.Field)
-	
+
 	// Apply operator
 	switch condition.Operator {
 	case OperatorEquals:
@@ -624,14 +624,98 @@ func (es *EventSystem) getEventFieldValue(event *Event, field string) interface{
 
 // compareValues compares two values
 func (es *EventSystem) compareValues(a, b interface{}) int {
-	// Simple comparison - in a real system, this would be more sophisticated
-	if a == b {
-		return 0
+	// Type-safe comparison across basic types
+	switch av := a.(type) {
+	case int:
+		if bv, ok := b.(int); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	case int64:
+		switch bv := b.(type) {
+		case int64:
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		case int:
+			if av == int64(bv) {
+				return 0
+			}
+			if av < int64(bv) {
+				return -1
+			}
+			return 1
+		}
+	case float64:
+		switch bv := b.(type) {
+		case float64:
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		case float32:
+			bb := float64(bv)
+			if av == bb {
+				return 0
+			}
+			if av < bb {
+				return -1
+			}
+			return 1
+		case int:
+			bb := float64(bv)
+			if av == bb {
+				return 0
+			}
+			if av < bb {
+				return -1
+			}
+			return 1
+		case int64:
+			bb := float64(bv)
+			if av == bb {
+				return 0
+			}
+			if av < bb {
+				return -1
+			}
+			return 1
+		}
+	case float32:
+		if bv, ok := b.(float32); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	case string:
+		if bv, ok := b.(string); ok {
+			if av == bv {
+				return 0
+			}
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
 	}
-	if a < b {
-		return -1
-	}
-	return 1
+	// Fallback: not comparable
+	return 0
 }
 
 // sendToDeadLetterQueue sends an event to the dead letter queue
@@ -793,7 +877,7 @@ func (es *EventSystem) updateMetrics(event string) {
 		es.eventMetrics.ActiveHandlers = len(es.eventHandlers)
 		es.eventMetrics.ActiveFilters = len(es.eventFilters)
 		es.eventMetrics.LastUpdated = time.Now()
-		
+
 		// Calculate throughput
 		if es.eventMetrics.TotalEvents > 0 {
 			es.eventMetrics.Throughput = float64(es.eventMetrics.ProcessedEvents) / float64(es.eventMetrics.TotalEvents)
@@ -840,14 +924,14 @@ func (es *EventSystem) GetStatus() map[string]interface{} {
 	defer es.mu.RUnlock()
 
 	return map[string]interface{}{
-		"started":           es.started,
-		"subscriber_count":  len(es.eventBus.subscribers),
-		"handler_count":     len(es.eventHandlers),
-		"filter_count":      len(es.eventFilters),
-		"event_count":       len(es.eventStore.events),
-		"queue_size":        len(es.eventBus.eventQueue),
-		"dead_letter_size":  len(es.eventBus.deadLetterQueue),
-		"metrics":           es.GetMetrics(),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"started":          es.started,
+		"subscriber_count": len(es.eventBus.subscribers),
+		"handler_count":    len(es.eventHandlers),
+		"filter_count":     len(es.eventFilters),
+		"event_count":      len(es.eventStore.events),
+		"queue_size":       len(es.eventBus.eventQueue),
+		"dead_letter_size": len(es.eventBus.deadLetterQueue),
+		"metrics":          es.GetMetrics(),
+		"timestamp":        time.Now().Format(time.RFC3339),
 	}
 }

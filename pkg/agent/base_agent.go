@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/versus-control/ai-infrastructure-agent/internal/config"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
@@ -54,9 +56,9 @@ type BaseAgent struct {
 type AgentMetrics struct {
 	requestsProcessed int64
 	tasksProcessed    int64
-	errors           int64
-	lastActivity     time.Time
-	mutex            sync.RWMutex
+	errors            int64
+	lastActivity      time.Time
+	mutex             sync.RWMutex
 }
 
 // NewBaseAgent creates a new base agent
@@ -374,11 +376,11 @@ func (ba *BaseAgent) GetMetrics() map[string]interface{} {
 	return map[string]interface{}{
 		"requests_processed": ba.metrics.requestsProcessed,
 		"tasks_processed":    ba.metrics.tasksProcessed,
-		"errors":            ba.metrics.errors,
-		"last_activity":     ba.metrics.lastActivity,
+		"errors":             ba.metrics.errors,
+		"last_activity":      ba.metrics.lastActivity,
 		"message_queue_size": len(ba.messageQueue),
-		"status":            ba.GetStatus(),
-		"tools_count":       len(ba.tools),
+		"status":             ba.GetStatus(),
+		"tools_count":        len(ba.tools),
 		"capabilities_count": len(ba.capabilities),
 	}
 }

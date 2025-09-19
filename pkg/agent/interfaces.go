@@ -49,43 +49,43 @@ type AgentCapability struct {
 
 // AgentInfo contains metadata about an agent
 type AgentInfo struct {
-	ID           string             `json:"id"`
-	Type         AgentType          `json:"type"`
-	Name         string             `json:"name"`
-	Description  string             `json:"description"`
-	Status       AgentStatus        `json:"status"`
-	Capabilities []AgentCapability  `json:"capabilities"`
-	Tools        []string           `json:"tools"`
-	LastSeen     time.Time          `json:"lastSeen"`
-	Metadata     map[string]string  `json:"metadata"`
+	ID           string            `json:"id"`
+	Type         AgentType         `json:"type"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description"`
+	Status       AgentStatus       `json:"status"`
+	Capabilities []AgentCapability `json:"capabilities"`
+	Tools        []string          `json:"tools"`
+	LastSeen     time.Time         `json:"lastSeen"`
+	Metadata     map[string]string `json:"metadata"`
 }
 
 // AgentRequest represents a request to an agent
 type AgentRequest struct {
-	ID          string                 `json:"id"`
-	From        string                 `json:"from"`
-	To          string                 `json:"to"`
-	Type        string                 `json:"type"`
-	Content     string                 `json:"content"`
-	Parameters  map[string]interface{} `json:"parameters"`
-	Priority    int                    `json:"priority"`
-	Timeout     time.Duration          `json:"timeout"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Context     context.Context        `json:"-"`
+	ID         string                 `json:"id"`
+	From       string                 `json:"from"`
+	To         string                 `json:"to"`
+	Type       string                 `json:"type"`
+	Content    string                 `json:"content"`
+	Parameters map[string]interface{} `json:"parameters"`
+	Priority   int                    `json:"priority"`
+	Timeout    time.Duration          `json:"timeout"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Context    context.Context        `json:"-"`
 }
 
 // AgentResponse represents a response from an agent
 type AgentResponse struct {
-	ID          string                 `json:"id"`
-	RequestID   string                 `json:"requestId"`
-	From        string                 `json:"from"`
-	To          string                 `json:"to"`
-	Success     bool                   `json:"success"`
-	Content     string                 `json:"content"`
-	Data        map[string]interface{} `json:"data"`
-	Error       string                 `json:"error,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Duration    time.Duration          `json:"duration"`
+	ID        string                 `json:"id"`
+	RequestID string                 `json:"requestId"`
+	From      string                 `json:"from"`
+	To        string                 `json:"to"`
+	Success   bool                   `json:"success"`
+	Content   string                 `json:"content"`
+	Data      map[string]interface{} `json:"data"`
+	Error     string                 `json:"error,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	Duration  time.Duration          `json:"duration"`
 }
 
 // AgentMessage represents inter-agent communication
@@ -102,34 +102,34 @@ type AgentMessage struct {
 
 // Message types for inter-agent communication
 const (
-	MessageTypeRequestHelp     = "request_help"
-	MessageTypeProvideResult   = "provide_result"
-	MessageTypeCoordinate      = "coordinate"
-	MessageTypeStatusUpdate    = "status_update"
-	MessageTypeErrorReport     = "error_report"
-	MessageTypeTaskDelegation  = "task_delegation"
-	MessageTypeTaskComplete    = "task_complete"
-	MessageTypeResourceUpdate  = "resource_update"
-	MessageTypeHealthCheck     = "health_check"
+	MessageTypeRequestHelp    = "request_help"
+	MessageTypeProvideResult  = "provide_result"
+	MessageTypeCoordinate     = "coordinate"
+	MessageTypeStatusUpdate   = "status_update"
+	MessageTypeErrorReport    = "error_report"
+	MessageTypeTaskDelegation = "task_delegation"
+	MessageTypeTaskComplete   = "task_complete"
+	MessageTypeResourceUpdate = "resource_update"
+	MessageTypeHealthCheck    = "health_check"
 )
 
 // Task represents a work unit that can be assigned to agents
 type Task struct {
-	ID              string                 `json:"id"`
-	Type            string                 `json:"type"`
-	Description     string                 `json:"description"`
-	AssignedAgent   string                 `json:"assignedAgent"`
-	RequiredAgent   AgentType              `json:"requiredAgent"`
-	Parameters      map[string]interface{} `json:"parameters"`
-	Priority        int                    `json:"priority"`
-	Status          string                 `json:"status"`
-	CreatedAt       time.Time              `json:"createdAt"`
-	StartedAt       *time.Time             `json:"startedAt,omitempty"`
-	CompletedAt     *time.Time             `json:"completedAt,omitempty"`
-	Result          map[string]interface{} `json:"result,omitempty"`
-	Error           string                 `json:"error,omitempty"`
-	Dependencies    []string               `json:"dependencies"`
-	Dependents      []string               `json:"dependents"`
+	ID            string                 `json:"id"`
+	Type          string                 `json:"type"`
+	Description   string                 `json:"description"`
+	AssignedAgent string                 `json:"assignedAgent"`
+	RequiredAgent AgentType              `json:"requiredAgent"`
+	Parameters    map[string]interface{} `json:"parameters"`
+	Priority      int                    `json:"priority"`
+	Status        string                 `json:"status"`
+	CreatedAt     time.Time              `json:"createdAt"`
+	StartedAt     *time.Time             `json:"startedAt,omitempty"`
+	CompletedAt   *time.Time             `json:"completedAt,omitempty"`
+	Result        map[string]interface{} `json:"result,omitempty"`
+	Error         string                 `json:"error,omitempty"`
+	Dependencies  []string               `json:"dependencies"`
+	Dependents    []string               `json:"dependents"`
 }
 
 // Task status constants
@@ -259,6 +259,7 @@ type MessageBusInterface interface {
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 	GetStatus() string
+	GetStatistics() *MessageBusStats
 }
 
 // AgentFactoryInterface defines the interface for creating agents
@@ -278,17 +279,17 @@ type AgentCreator func(config *config.AgentConfig, dependencies *AgentDependenci
 // AgentDependencies contains all dependencies needed to create an agent
 type AgentDependencies struct {
 	// Core dependencies
-	Config        *config.Config
-	AgentConfig   *config.AgentConfig
-	AWSConfig     *config.AWSConfig
-	AWSClient     *aws.Client
-	Logger        *logging.Logger
+	Config      *config.Config
+	AgentConfig *config.AgentConfig
+	AWSConfig   *config.AWSConfig
+	AWSClient   *aws.Client
+	Logger      *logging.Logger
 
 	// System components
 	StateManager     interfaces.StateManager
 	DiscoveryScanner interfaces.DiscoveryScanner
-	GraphManager     interfaces.GraphManager
-	GraphAnalyzer    interfaces.GraphAnalyzer
+	GraphManager     interface{}
+	GraphAnalyzer    interface{}
 	ConflictResolver interfaces.ConflictResolver
 
 	// Multi-agent system components

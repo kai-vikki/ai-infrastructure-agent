@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -17,15 +16,15 @@ import (
 
 // MessageMonitoringSystem monitors and analyzes message flow
 type MessageMonitoringSystem struct {
-	messageLogs      *MessageLog
-	analyticsEngine  *AnalyticsEngine
-	alertManager     *AlertManager
+	messageLogs        *MessageLog
+	analyticsEngine    *AnalyticsEngine
+	alertManager       *AlertManager
 	performanceTracker *PerformanceTracker
-	logger           *logging.Logger
-	mu               sync.RWMutex
-	started          bool
-	ctx              context.Context
-	cancel           context.CancelFunc
+	logger             *logging.Logger
+	mu                 sync.RWMutex
+	started            bool
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 // MessageLog stores message logs for analysis
@@ -36,38 +35,38 @@ type MessageLog struct {
 
 // MessageLogEntry represents a message log entry
 type MessageLogEntry struct {
-	ID            string                 `json:"id"`
-	MessageID     string                 `json:"message_id"`
-	MessageType   string                 `json:"message_type"`
-	Source        string                 `json:"source"`
-	Destination   string                 `json:"destination"`
-	Topic         string                 `json:"topic"`
-	Status        MessageStatus          `json:"status"`
-	Timestamp     time.Time              `json:"timestamp"`
-	ProcessingTime time.Duration         `json:"processing_time"`
-	Size          int                    `json:"size"`
-	Priority      MessagePriority        `json:"priority"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	ID             string                 `json:"id"`
+	MessageID      string                 `json:"message_id"`
+	MessageType    string                 `json:"message_type"`
+	Source         string                 `json:"source"`
+	Destination    string                 `json:"destination"`
+	Topic          string                 `json:"topic"`
+	Status         MessageStatus          `json:"status"`
+	Timestamp      time.Time              `json:"timestamp"`
+	ProcessingTime time.Duration          `json:"processing_time"`
+	Size           int                    `json:"size"`
+	Priority       MessagePriority        `json:"priority"`
+	Metadata       map[string]interface{} `json:"metadata"`
 }
 
 // AnalyticsEngine analyzes message patterns and trends
 type AnalyticsEngine struct {
-	patterns      map[string]*MessagePattern
-	trends        map[string]*MessageTrend
-	anomalies     []*MessageAnomaly
-	logger        *logging.Logger
-	mu            sync.RWMutex
+	patterns  map[string]*MessagePattern
+	trends    map[string]*MessageTrend
+	anomalies []*MessageAnomaly
+	logger    *logging.Logger
+	mu        sync.RWMutex
 }
 
 // MessagePattern represents a message pattern
 type MessagePattern struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Pattern     string                 `json:"pattern"`
-	Frequency   int                    `json:"frequency"`
-	LastSeen    time.Time              `json:"last_seen"`
-	CreatedAt   time.Time              `json:"created_at"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Pattern   string                 `json:"pattern"`
+	Frequency int                    `json:"frequency"`
+	LastSeen  time.Time              `json:"last_seen"`
+	CreatedAt time.Time              `json:"created_at"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // MessageTrend represents a message trend
@@ -104,16 +103,16 @@ type AlertManager struct {
 
 // Alert represents an alert
 type Alert struct {
-	ID          string                 `json:"id"`
-	RuleID      string                 `json:"rule_id"`
-	Type        AlertType              `json:"type"`
-	Severity    AlertSeverity          `json:"severity"`
-	Message     string                 `json:"message"`
-	Status      AlertStatus            `json:"status"`
-	CreatedAt   time.Time              `json:"created_at"`
-	AcknowledgedAt *time.Time          `json:"acknowledged_at,omitempty"`
-	ResolvedAt  *time.Time             `json:"resolved_at,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID             string                 `json:"id"`
+	RuleID         string                 `json:"rule_id"`
+	Type           AlertType              `json:"type"`
+	Severity       AlertSeverity          `json:"severity"`
+	Message        string                 `json:"message"`
+	Status         AlertStatus            `json:"status"`
+	CreatedAt      time.Time              `json:"created_at"`
+	AcknowledgedAt *time.Time             `json:"acknowledged_at,omitempty"`
+	ResolvedAt     *time.Time             `json:"resolved_at,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata"`
 }
 
 // AlertRule represents an alert rule
@@ -153,13 +152,13 @@ type PerformanceTracker struct {
 
 // PerformanceMetric represents a performance metric
 type PerformanceMetric struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Value       float64                `json:"value"`
-	Unit        string                 `json:"unit"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Tags        map[string]string      `json:"tags"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Value     float64                `json:"value"`
+	Unit      string                 `json:"unit"`
+	Timestamp time.Time              `json:"timestamp"`
+	Tags      map[string]string      `json:"tags"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // MetricAggregation represents a metric aggregation
@@ -177,11 +176,11 @@ type MetricAggregation struct {
 type AnomalyType string
 
 const (
-	AnomalyTypeVolume      AnomalyType = "volume"
-	AnomalyTypeLatency     AnomalyType = "latency"
-	AnomalyTypeError       AnomalyType = "error"
-	AnomalyTypePattern     AnomalyType = "pattern"
-	AnomalyTypeSecurity    AnomalyType = "security"
+	AnomalyTypeVolume   AnomalyType = "volume"
+	AnomalyTypeLatency  AnomalyType = "latency"
+	AnomalyTypeError    AnomalyType = "error"
+	AnomalyTypePattern  AnomalyType = "pattern"
+	AnomalyTypeSecurity AnomalyType = "security"
 )
 
 // AnomalySeverity represents the severity of an anomaly
@@ -198,11 +197,11 @@ const (
 type AlertType string
 
 const (
-	AlertTypeThreshold    AlertType = "threshold"
-	AlertTypeAnomaly      AlertType = "anomaly"
-	AlertTypeError        AlertType = "error"
-	AlertTypePerformance  AlertType = "performance"
-	AlertTypeSecurity     AlertType = "security"
+	AlertTypeThreshold   AlertType = "threshold"
+	AlertTypeAnomaly     AlertType = "anomaly"
+	AlertTypeError       AlertType = "error"
+	AlertTypePerformance AlertType = "performance"
+	AlertTypeSecurity    AlertType = "security"
 )
 
 // AlertSeverity represents the severity of an alert
@@ -229,11 +228,11 @@ const (
 type NotificationType string
 
 const (
-	NotificationTypeEmail    NotificationType = "email"
-	NotificationTypeSMS      NotificationType = "sms"
-	NotificationTypeWebhook  NotificationType = "webhook"
-	NotificationTypeSlack    NotificationType = "slack"
-	NotificationTypeTeams    NotificationType = "teams"
+	NotificationTypeEmail   NotificationType = "email"
+	NotificationTypeSMS     NotificationType = "sms"
+	NotificationTypeWebhook NotificationType = "webhook"
+	NotificationTypeSlack   NotificationType = "slack"
+	NotificationTypeTeams   NotificationType = "teams"
 )
 
 // NotificationStatus represents the status of a notification
@@ -260,7 +259,7 @@ const (
 // NewMessageMonitoringSystem creates a new message monitoring system
 func NewMessageMonitoringSystem(logger *logging.Logger) *MessageMonitoringSystem {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &MessageMonitoringSystem{
 		messageLogs: &MessageLog{
 			entries: make([]*MessageLogEntry, 0),
@@ -272,10 +271,10 @@ func NewMessageMonitoringSystem(logger *logging.Logger) *MessageMonitoringSystem
 			logger:    logger,
 		},
 		alertManager: &AlertManager{
-			alerts:     make(map[string]*Alert),
-			alertRules: make(map[string]*AlertRule),
+			alerts:        make(map[string]*Alert),
+			alertRules:    make(map[string]*AlertRule),
 			notifications: make([]*Notification, 0),
-			logger:     logger,
+			logger:        logger,
 		},
 		performanceTracker: &PerformanceTracker{
 			metrics:      make(map[string]*PerformanceMetric),
@@ -349,18 +348,18 @@ func (mms *MessageMonitoringSystem) LogMessage(message *Message, processingTime 
 
 	// Create log entry
 	entry := &MessageLogEntry{
-		ID:            uuid.New().String(),
-		MessageID:     message.ID,
-		MessageType:   message.Type,
-		Source:        message.From,
-		Destination:   message.To,
-		Topic:         message.Topic,
-		Status:        message.Status,
-		Timestamp:     time.Now(),
+		ID:             uuid.New().String(),
+		MessageID:      message.ID,
+		MessageType:    message.Type,
+		Source:         message.From,
+		Destination:    message.To,
+		Topic:          message.Topic,
+		Status:         message.Status,
+		Timestamp:      time.Now(),
 		ProcessingTime: processingTime,
-		Size:          len(fmt.Sprintf("%v", message.Content)),
-		Priority:      message.Priority,
-		Metadata:      make(map[string]interface{}),
+		Size:           len(fmt.Sprintf("%v", message.Content)),
+		Priority:       message.Priority,
+		Metadata:       make(map[string]interface{}),
 	}
 
 	// Copy metadata
@@ -383,9 +382,9 @@ func (mms *MessageMonitoringSystem) LogMessage(message *Message, processingTime 
 	mms.checkAlertRules(entry)
 
 	mms.logger.WithFields(map[string]interface{}{
-		"message_id":       message.ID,
-		"processing_time":  processingTime,
-		"status":           message.Status,
+		"message_id":      message.ID,
+		"processing_time": processingTime,
+		"status":          message.Status,
 	}).Debug("Message logged for monitoring")
 
 	return nil
@@ -455,10 +454,10 @@ func (mms *MessageMonitoringSystem) updateMessageTrends() {
 
 	// Calculate trends for different metrics
 	trends := map[string]float64{
-		"message_volume":     float64(len(mms.getRecentMessages(1 * time.Minute))),
-		"average_latency":    mms.calculateAverageLatency(1 * time.Minute),
-		"error_rate":         mms.calculateErrorRate(1 * time.Minute),
-		"throughput":         mms.calculateThroughput(1 * time.Minute),
+		"message_volume":  float64(len(mms.getRecentMessages(1 * time.Minute))),
+		"average_latency": mms.calculateAverageLatency(1 * time.Minute).Seconds(),
+		"error_rate":      mms.calculateErrorRate(1 * time.Minute),
+		"throughput":      mms.calculateThroughput(1 * time.Minute),
 	}
 
 	// Update trends
@@ -598,10 +597,10 @@ func (mms *MessageMonitoringSystem) checkAlertRules(entry *MessageLogEntry) {
 			mms.alertManager.alerts[alert.ID] = alert
 
 			mms.logger.WithFields(map[string]interface{}{
-				"alert_id":   alert.ID,
-				"rule_id":    rule.ID,
-				"rule_name":  rule.Name,
-				"severity":   rule.Severity,
+				"alert_id":  alert.ID,
+				"rule_id":   rule.ID,
+				"rule_name": rule.Name,
+				"severity":  rule.Severity,
 			}).Warn("Alert created")
 		}
 	}
@@ -611,7 +610,7 @@ func (mms *MessageMonitoringSystem) checkAlertRules(entry *MessageLogEntry) {
 func (mms *MessageMonitoringSystem) evaluateAlertRule(rule *AlertRule, entry *MessageLogEntry) bool {
 	// This is a simplified implementation
 	// In a real system, this would evaluate the rule condition against the entry
-	
+
 	switch rule.Condition {
 	case "high_latency":
 		return entry.ProcessingTime > time.Duration(rule.Threshold)*time.Second
@@ -849,16 +848,16 @@ func (mms *MessageMonitoringSystem) GetStatus() map[string]interface{} {
 	defer mms.mu.RUnlock()
 
 	return map[string]interface{}{
-		"started":           mms.started,
-		"message_count":     len(mms.messageLogs.entries),
-		"pattern_count":     len(mms.analyticsEngine.patterns),
-		"trend_count":       len(mms.analyticsEngine.trends),
-		"anomaly_count":     len(mms.analyticsEngine.anomalies),
-		"alert_count":       len(mms.alertManager.alerts),
+		"started":            mms.started,
+		"message_count":      len(mms.messageLogs.entries),
+		"pattern_count":      len(mms.analyticsEngine.patterns),
+		"trend_count":        len(mms.analyticsEngine.trends),
+		"anomaly_count":      len(mms.analyticsEngine.anomalies),
+		"alert_count":        len(mms.alertManager.alerts),
 		"notification_count": len(mms.alertManager.notifications),
-		"metric_count":      len(mms.performanceTracker.metrics),
-		"aggregation_count": len(mms.performanceTracker.aggregations),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"metric_count":       len(mms.performanceTracker.metrics),
+		"aggregation_count":  len(mms.performanceTracker.aggregations),
+		"timestamp":          time.Now().Format(time.RFC3339),
 	}
 }
 

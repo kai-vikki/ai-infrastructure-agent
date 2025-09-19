@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 )
 
@@ -16,13 +15,13 @@ import (
 
 // AgentRegistryImpl implements the AgentRegistryInterface
 type AgentRegistryImpl struct {
-	agents      map[string]SpecializedAgentInterface
-	agentsByType map[AgentType][]SpecializedAgentInterface
-	agentsByCapability map[string][]SpecializedAgentInterface
-	healthStatus map[string]AgentStatus
-	lastSeen     map[string]time.Time
-	mutex        sync.RWMutex
-	logger       *logging.Logger
+	agents              map[string]SpecializedAgentInterface
+	agentsByType        map[AgentType][]SpecializedAgentInterface
+	agentsByCapability  map[string][]SpecializedAgentInterface
+	healthStatus        map[string]AgentStatus
+	lastSeen            map[string]time.Time
+	mutex               sync.RWMutex
+	logger              *logging.Logger
 	healthCheckInterval time.Duration
 	healthCheckTimeout  time.Duration
 }
@@ -74,11 +73,11 @@ func (r *AgentRegistryImpl) RegisterAgent(agent SpecializedAgentInterface) error
 	}
 
 	r.logger.WithFields(map[string]interface{}{
-		"agent_id":   agentID,
-		"agent_type": agentType,
-		"agent_name": agentInfo.Name,
+		"agent_id":     agentID,
+		"agent_type":   agentType,
+		"agent_name":   agentInfo.Name,
 		"capabilities": len(agentInfo.Capabilities),
-		"tools":      len(agentInfo.Tools),
+		"tools":        len(agentInfo.Tools),
 	}).Info("Agent registered successfully")
 
 	return nil
@@ -369,8 +368,8 @@ func (r *AgentRegistryImpl) performHealthCheck() {
 
 	for agentID, agent := range agents {
 		// Perform health check with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), r.healthCheckTimeout)
-		
+		_, cancel := context.WithTimeout(context.Background(), r.healthCheckTimeout)
+
 		// Update last seen time
 		r.mutex.Lock()
 		r.lastSeen[agentID] = time.Now()
@@ -436,7 +435,7 @@ func (ad *AgentDiscovery) DiscoverAgentsByCapability(capabilities []string) map[
 func (ad *AgentDiscovery) DiscoverBestAgentForRequest(request *AgentRequest) (SpecializedAgentInterface, error) {
 	// Try to find agents that can handle the request directly
 	allAgents := ad.registry.GetAllAgents()
-	
+
 	for _, agent := range allAgents {
 		if agent.CanHandleRequest(request) {
 			return agent, nil
@@ -460,16 +459,16 @@ func (ad *AgentDiscovery) GetAgentStatistics() map[string]interface{} {
 	healthStatus := ad.registry.GetAllAgentHealth()
 
 	stats := map[string]interface{}{
-		"total_agents": len(allAgents),
-		"by_type":      make(map[AgentType]int),
-		"by_status":    make(map[AgentStatus]int),
+		"total_agents":  len(allAgents),
+		"by_type":       make(map[AgentType]int),
+		"by_status":     make(map[AgentStatus]int),
 		"by_capability": make(map[string]int),
 	}
 
 	// Count by type and status
 	for _, agent := range allAgents {
 		agentInfo := agent.GetInfo()
-		
+
 		// Count by type
 		if count, exists := stats["by_type"].(map[AgentType]int); exists {
 			count[agentInfo.Type]++

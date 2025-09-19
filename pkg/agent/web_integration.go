@@ -1,15 +1,12 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
-	"github.com/versus-control/ai-infrastructure-agent/pkg/types"
 )
 
 // =============================================================================
@@ -121,7 +118,7 @@ func (wi *WebIntegration) getSystemDiagnostics(w http.ResponseWriter, r *http.Re
 // getAllAgents returns all agents in the system
 func (wi *WebIntegration) getAllAgents(w http.ResponseWriter, r *http.Request) {
 	agents := wi.multiAgentSystem.agentRegistry.GetAllAgents()
-	
+
 	agentList := make([]map[string]interface{}, 0, len(agents))
 	for _, agent := range agents {
 		agentInfo := agent.GetInfo()
@@ -258,21 +255,21 @@ func (wi *WebIntegration) getAllTasks(w http.ResponseWriter, r *http.Request) {
 	taskList := make([]map[string]interface{}, 0, len(tasks))
 	for _, task := range tasks {
 		taskList = append(taskList, map[string]interface{}{
-			"id":              task.ID,
-			"type":            task.Type,
-			"description":     task.Description,
-			"assignedAgent":   task.AssignedAgent,
-			"requiredAgent":   task.RequiredAgent,
-			"parameters":      task.Parameters,
-			"priority":        task.Priority,
-			"status":          task.Status,
-			"createdAt":       task.CreatedAt,
-			"startedAt":       task.StartedAt,
-			"completedAt":     task.CompletedAt,
-			"result":          task.Result,
-			"error":           task.Error,
-			"dependencies":    task.Dependencies,
-			"dependents":      task.Dependents,
+			"id":            task.ID,
+			"type":          task.Type,
+			"description":   task.Description,
+			"assignedAgent": task.AssignedAgent,
+			"requiredAgent": task.RequiredAgent,
+			"parameters":    task.Parameters,
+			"priority":      task.Priority,
+			"status":        task.Status,
+			"createdAt":     task.CreatedAt,
+			"startedAt":     task.StartedAt,
+			"completedAt":   task.CompletedAt,
+			"result":        task.Result,
+			"error":         task.Error,
+			"dependencies":  task.Dependencies,
+			"dependents":    task.Dependents,
 		})
 	}
 
@@ -296,21 +293,21 @@ func (wi *WebIntegration) getTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wi.writeJSONResponse(w, http.StatusOK, map[string]interface{}{
-		"id":              task.ID,
-		"type":            task.Type,
-		"description":     task.Description,
-		"assignedAgent":   task.AssignedAgent,
-		"requiredAgent":   task.RequiredAgent,
-		"parameters":      task.Parameters,
-		"priority":        task.Priority,
-		"status":          task.Status,
-		"createdAt":       task.CreatedAt,
-		"startedAt":       task.StartedAt,
-		"completedAt":     task.CompletedAt,
-		"result":          task.Result,
-		"error":           task.Error,
-		"dependencies":    task.Dependencies,
-		"dependents":      task.Dependents,
+		"id":            task.ID,
+		"type":          task.Type,
+		"description":   task.Description,
+		"assignedAgent": task.AssignedAgent,
+		"requiredAgent": task.RequiredAgent,
+		"parameters":    task.Parameters,
+		"priority":      task.Priority,
+		"status":        task.Status,
+		"createdAt":     task.CreatedAt,
+		"startedAt":     task.StartedAt,
+		"completedAt":   task.CompletedAt,
+		"result":        task.Result,
+		"error":         task.Error,
+		"dependencies":  task.Dependencies,
+		"dependents":    task.Dependents,
 	})
 }
 
@@ -445,7 +442,7 @@ func (wi *WebIntegration) getAgentMessageQueue(w http.ResponseWriter, r *http.Re
 // getRegistryAgents returns all agents from the registry
 func (wi *WebIntegration) getRegistryAgents(w http.ResponseWriter, r *http.Request) {
 	agents := wi.multiAgentSystem.agentRegistry.GetAllAgents()
-	
+
 	agentList := make([]map[string]interface{}, 0, len(agents))
 	for _, agent := range agents {
 		agentInfo := agent.GetInfo()
@@ -492,7 +489,7 @@ func (wi *WebIntegration) getRegistryStatistics(w http.ResponseWriter, r *http.R
 func (wi *WebIntegration) writeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		wi.logger.WithError(err).Error("Failed to encode JSON response")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -552,10 +549,8 @@ func (wsi *WebSocketIntegration) run() {
 
 		case message := <-wsi.broadcast:
 			for conn := range wsi.clients {
-				select {
-				case conn.WriteMessage(websocket.TextMessage, message):
-				default:
-					close(conn)
+				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+					conn.Close()
 					delete(wsi.clients, conn)
 				}
 			}
@@ -570,11 +565,12 @@ func (wsi *WebSocketIntegration) BroadcastMessage(message []byte) {
 
 // HandleWebSocket handles WebSocket connections
 func (wsi *WebSocketIntegration) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Upgrader{
+	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true // Allow all origins for development
 		},
-	}.Upgrade(w, r, nil)
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		wsi.logger.WithError(err).Error("Failed to upgrade WebSocket connection")
 		return

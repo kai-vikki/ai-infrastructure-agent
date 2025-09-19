@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/tmc/langchaingo/llms"
+	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 )
 
 // =============================================================================
@@ -24,21 +25,21 @@ type TaskDecompositionEngine struct {
 
 // TaskPatterns contains patterns for identifying infrastructure requirements
 type TaskPatterns struct {
-	networkPatterns   []*regexp.Regexp
-	computePatterns   []*regexp.Regexp
-	storagePatterns   []*regexp.Regexp
-	securityPatterns  []*regexp.Regexp
+	networkPatterns    []*regexp.Regexp
+	computePatterns    []*regexp.Regexp
+	storagePatterns    []*regexp.Regexp
+	securityPatterns   []*regexp.Regexp
 	monitoringPatterns []*regexp.Regexp
-	backupPatterns    []*regexp.Regexp
+	backupPatterns     []*regexp.Regexp
 }
 
 // TaskTemplates contains templates for common infrastructure patterns
 type TaskTemplates struct {
-	webAppTemplate     []map[string]interface{}
-	databaseTemplate   []map[string]interface{}
+	webAppTemplate       []map[string]interface{}
+	databaseTemplate     []map[string]interface{}
 	loadBalancerTemplate []map[string]interface{}
-	monitoringTemplate []map[string]interface{}
-	backupTemplate     []map[string]interface{}
+	monitoringTemplate   []map[string]interface{}
+	backupTemplate       []map[string]interface{}
 }
 
 // DecompositionResult contains the result of task decomposition
@@ -104,8 +105,8 @@ func NewTaskTemplates() *TaskTemplates {
 	return &TaskTemplates{
 		webAppTemplate: []map[string]interface{}{
 			{
-				"type":        "create_vpc",
-				"agent_type":  "Network",
+				"type":       "create_vpc",
+				"agent_type": "Network",
 				"parameters": map[string]interface{}{
 					"cidrBlock": "10.0.0.0/16",
 					"name":      "web-app-vpc",
@@ -114,8 +115,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     5,
 			},
 			{
-				"type":        "create_public_subnet",
-				"agent_type":  "Network",
+				"type":       "create_public_subnet",
+				"agent_type": "Network",
 				"parameters": map[string]interface{}{
 					"vpcId":            "{{vpc_id}}",
 					"cidrBlock":        "10.0.1.0/24",
@@ -126,8 +127,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     4,
 			},
 			{
-				"type":        "create_private_subnet",
-				"agent_type":  "Network",
+				"type":       "create_private_subnet",
+				"agent_type": "Network",
 				"parameters": map[string]interface{}{
 					"vpcId":            "{{vpc_id}}",
 					"cidrBlock":        "10.0.2.0/24",
@@ -138,8 +139,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     4,
 			},
 			{
-				"type":        "create_internet_gateway",
-				"agent_type":  "Network",
+				"type":       "create_internet_gateway",
+				"agent_type": "Network",
 				"parameters": map[string]interface{}{
 					"name": "web-app-igw",
 				},
@@ -147,8 +148,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     3,
 			},
 			{
-				"type":        "create_security_group",
-				"agent_type":  "Security",
+				"type":       "create_security_group",
+				"agent_type": "Security",
 				"parameters": map[string]interface{}{
 					"groupName":   "web-app-sg",
 					"description": "Security group for web application",
@@ -158,20 +159,20 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     3,
 			},
 			{
-				"type":        "create_ec2_instance",
-				"agent_type":  "Compute",
+				"type":       "create_ec2_instance",
+				"agent_type": "Compute",
 				"parameters": map[string]interface{}{
-					"instanceType": "t3.micro",
-					"subnetId":     "{{public_subnet_id}}",
+					"instanceType":     "t3.micro",
+					"subnetId":         "{{public_subnet_id}}",
 					"securityGroupIds": []string{"{{security_group_id}}"},
-					"name":         "web-app-instance",
+					"name":             "web-app-instance",
 				},
 				"dependencies": []string{"create_public_subnet", "create_security_group"},
 				"priority":     2,
 			},
 			{
-				"type":        "create_load_balancer",
-				"agent_type":  "Compute",
+				"type":       "create_load_balancer",
+				"agent_type": "Compute",
 				"parameters": map[string]interface{}{
 					"lbName":           "web-app-alb",
 					"subnetIds":        []string{"{{public_subnet_id}}"},
@@ -184,8 +185,8 @@ func NewTaskTemplates() *TaskTemplates {
 		},
 		databaseTemplate: []map[string]interface{}{
 			{
-				"type":        "create_db_subnet_group",
-				"agent_type":  "Storage",
+				"type":       "create_db_subnet_group",
+				"agent_type": "Storage",
 				"parameters": map[string]interface{}{
 					"dbSubnetGroupName": "web-app-db-subnet-group",
 					"description":       "Subnet group for web app database",
@@ -195,8 +196,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     3,
 			},
 			{
-				"type":        "create_db_instance",
-				"agent_type":  "Storage",
+				"type":       "create_db_instance",
+				"agent_type": "Storage",
 				"parameters": map[string]interface{}{
 					"dbInstanceIdentifier": "web-app-db",
 					"engine":               "mysql",
@@ -213,8 +214,8 @@ func NewTaskTemplates() *TaskTemplates {
 		},
 		loadBalancerTemplate: []map[string]interface{}{
 			{
-				"type":        "create_target_group",
-				"agent_type":  "Compute",
+				"type":       "create_target_group",
+				"agent_type": "Compute",
 				"parameters": map[string]interface{}{
 					"tgName":   "web-app-tg",
 					"vpcId":    "{{vpc_id}}",
@@ -225,8 +226,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     3,
 			},
 			{
-				"type":        "create_listener",
-				"agent_type":  "Compute",
+				"type":       "create_listener",
+				"agent_type": "Compute",
 				"parameters": map[string]interface{}{
 					"loadBalancerArn": "{{load_balancer_arn}}",
 					"targetGroupArn":  "{{target_group_arn}}",
@@ -239,24 +240,24 @@ func NewTaskTemplates() *TaskTemplates {
 		},
 		monitoringTemplate: []map[string]interface{}{
 			{
-				"type":        "create_alarm",
-				"agent_type":  "Monitoring",
+				"type":       "create_alarm",
+				"agent_type": "Monitoring",
 				"parameters": map[string]interface{}{
-					"alarmName":           "web-app-cpu-alarm",
-					"metricName":          "CPUUtilization",
-					"namespace":           "AWS/EC2",
-					"statistic":           "Average",
-					"period":              300,
-					"threshold":           80.0,
-					"comparisonOperator":  "GreaterThanThreshold",
-					"evaluationPeriods":   2,
+					"alarmName":          "web-app-cpu-alarm",
+					"metricName":         "CPUUtilization",
+					"namespace":          "AWS/EC2",
+					"statistic":          "Average",
+					"period":             300,
+					"threshold":          80.0,
+					"comparisonOperator": "GreaterThanThreshold",
+					"evaluationPeriods":  2,
 				},
 				"dependencies": []string{"create_ec2_instance"},
 				"priority":     1,
 			},
 			{
-				"type":        "create_dashboard",
-				"agent_type":  "Monitoring",
+				"type":       "create_dashboard",
+				"agent_type": "Monitoring",
 				"parameters": map[string]interface{}{
 					"dashboardName": "web-app-dashboard",
 					"dashboardBody": `{
@@ -286,8 +287,8 @@ func NewTaskTemplates() *TaskTemplates {
 		},
 		backupTemplate: []map[string]interface{}{
 			{
-				"type":        "create_snapshot",
-				"agent_type":  "Backup",
+				"type":       "create_snapshot",
+				"agent_type": "Backup",
 				"parameters": map[string]interface{}{
 					"volumeId":    "{{volume_id}}",
 					"description": "Daily backup snapshot",
@@ -297,8 +298,8 @@ func NewTaskTemplates() *TaskTemplates {
 				"priority":     1,
 			},
 			{
-				"type":        "create_backup",
-				"agent_type":  "Backup",
+				"type":       "create_backup",
+				"agent_type": "Backup",
 				"parameters": map[string]interface{}{
 					"resourceId":   "{{db_instance_id}}",
 					"resourceType": "RDS",
@@ -363,9 +364,9 @@ func (tde *TaskDecompositionEngine) DecomposeRequest(ctx context.Context, reques
 	}
 
 	tde.logger.WithFields(map[string]interface{}{
-		"task_count":         len(mergedTasks),
+		"task_count":          len(mergedTasks),
 		"infrastructure_type": infrastructureType,
-		"estimated_duration": estimatedDuration,
+		"estimated_duration":  estimatedDuration,
 	}).Info("Task decomposition completed")
 
 	return result, nil
@@ -555,10 +556,10 @@ func (tde *TaskDecompositionEngine) applyTemplates(infrastructureType string, pa
 func (tde *TaskDecompositionEngine) mergeAndOptimizeTasks(llmTasks, templateTasks []map[string]interface{}) []map[string]interface{} {
 	// Simple merge strategy - prefer LLM tasks over template tasks
 	mergedTasks := make([]map[string]interface{}, 0, len(llmTasks)+len(templateTasks))
-	
+
 	// Add LLM tasks first
 	mergedTasks = append(mergedTasks, llmTasks...)
-	
+
 	// Add template tasks that don't conflict
 	for _, templateTask := range templateTasks {
 		conflict := false
@@ -590,7 +591,7 @@ func (tde *TaskDecompositionEngine) optimizeTasks(tasks []map[string]interface{}
 		if !ok {
 			continue
 		}
-		
+
 		if !seenTypes[taskType] {
 			seenTypes[taskType] = true
 			uniqueTasks = append(uniqueTasks, task)
@@ -659,7 +660,7 @@ func (tde *TaskDecompositionEngine) createExecutionPlan(tasks []map[string]inter
 		if !ok {
 			continue
 		}
-		
+
 		if !visited[taskType] {
 			if err := visit(taskType); err != nil {
 				tde.logger.WithError(err).Error("Failed to create execution plan")
@@ -674,8 +675,8 @@ func (tde *TaskDecompositionEngine) createExecutionPlan(tasks []map[string]inter
 // assessRisks assesses risks associated with the tasks
 func (tde *TaskDecompositionEngine) assessRisks(tasks []map[string]interface{}, patterns []string) map[string]interface{} {
 	risks := map[string]interface{}{
-		"overall_risk_level": "medium",
-		"identified_risks":   []string{},
+		"overall_risk_level":    "medium",
+		"identified_risks":      []string{},
 		"mitigation_strategies": []string{},
 	}
 
@@ -717,17 +718,17 @@ func (tde *TaskDecompositionEngine) assessRisks(tasks []map[string]interface{}, 
 func (tde *TaskDecompositionEngine) estimateDuration(tasks []map[string]interface{}) string {
 	// Simple estimation based on task count and types
 	taskCount := len(tasks)
-	
+
 	// Base time per task (in minutes)
 	baseTimePerTask := 5
-	
+
 	// Adjust based on task types
 	for _, task := range tasks {
 		taskType, ok := task["type"].(string)
 		if !ok {
 			continue
 		}
-		
+
 		switch {
 		case strings.Contains(taskType, "database"):
 			baseTimePerTask += 10 // Databases take longer
@@ -737,9 +738,9 @@ func (tde *TaskDecompositionEngine) estimateDuration(tasks []map[string]interfac
 			baseTimePerTask += 3 // VPCs take longer
 		}
 	}
-	
+
 	totalMinutes := taskCount * baseTimePerTask
-	
+
 	if totalMinutes < 60 {
 		return fmt.Sprintf("%d minutes", totalMinutes)
 	} else if totalMinutes < 1440 {

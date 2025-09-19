@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -18,7 +17,7 @@ import (
 // AgentCommunicationManager manages communication between agents
 type AgentCommunicationManager struct {
 	messageBus       *AdvancedMessageBus
-	agentRegistry    AgentRegistry
+	agentRegistry    AgentRegistryInterface
 	communicationLog *CommunicationLog
 	logger           *logging.Logger
 	mu               sync.RWMutex
@@ -42,8 +41,8 @@ type CommunicationSession struct {
 type ProtocolHandler struct {
 	Protocol     CommunicationProtocol `json:"protocol"`
 	Handler      func(ctx context.Context, session *CommunicationSession, message *Message) error
-	Description  string                 `json:"description"`
-	Capabilities []string               `json:"capabilities"`
+	Description  string   `json:"description"`
+	Capabilities []string `json:"capabilities"`
 }
 
 // CommunicationLog logs all communication activities
@@ -67,12 +66,12 @@ type CommunicationLogEntry struct {
 type CommunicationProtocol string
 
 const (
-	ProtocolRequestResponse CommunicationProtocol = "request_response"
+	ProtocolRequestResponse  CommunicationProtocol = "request_response"
 	ProtocolPublishSubscribe CommunicationProtocol = "publish_subscribe"
-	ProtocolEventDriven     CommunicationProtocol = "event_driven"
-	ProtocolStreaming       CommunicationProtocol = "streaming"
-	ProtocolBatch           CommunicationProtocol = "batch"
-	ProtocolBroadcast       CommunicationProtocol = "broadcast"
+	ProtocolEventDriven      CommunicationProtocol = "event_driven"
+	ProtocolStreaming        CommunicationProtocol = "streaming"
+	ProtocolBatch            CommunicationProtocol = "batch"
+	ProtocolBroadcast        CommunicationProtocol = "broadcast"
 )
 
 // SessionStatus represents the status of a communication session
@@ -87,7 +86,7 @@ const (
 )
 
 // NewAgentCommunicationManager creates a new agent communication manager
-func NewAgentCommunicationManager(messageBus *AdvancedMessageBus, agentRegistry AgentRegistry, logger *logging.Logger) *AgentCommunicationManager {
+func NewAgentCommunicationManager(messageBus *AdvancedMessageBus, agentRegistry AgentRegistryInterface, logger *logging.Logger) *AgentCommunicationManager {
 	manager := &AgentCommunicationManager{
 		messageBus:       messageBus,
 		agentRegistry:    agentRegistry,
@@ -114,17 +113,14 @@ func (acm *AgentCommunicationManager) StartSession(ctx context.Context, particip
 
 	// Validate participants
 	for _, participantID := range participants {
-		agent, err := acm.agentRegistry.GetAgent(participantID)
-		if err != nil {
-			return nil, fmt.Errorf("participant %s not found: %w", participantID, err)
-		}
-		if agent == nil {
-			return nil, fmt.Errorf("participant %s is nil", participantID)
+		agent, exists := acm.agentRegistry.GetAgent(participantID)
+		if !exists || agent == nil {
+			return nil, fmt.Errorf("participant %s not found", participantID)
 		}
 	}
 
 	// Validate protocol
-	protocolHandler, exists := acm.protocols[protocol]
+	_, exists := acm.protocols[protocol]
 	if !exists {
 		return nil, fmt.Errorf("protocol %s not supported", protocol)
 	}
@@ -315,8 +311,8 @@ func (acm *AgentCommunicationManager) SendBroadcastMessage(ctx context.Context, 
 	}
 
 	acm.logger.WithFields(map[string]interface{}{
-		"session_id": sessionID,
-		"from":       fromAgentID,
+		"session_id":    sessionID,
+		"from":          fromAgentID,
 		"message_count": len(messages),
 	}).Info("Broadcast message sent successfully")
 
@@ -390,50 +386,50 @@ func (acm *AgentCommunicationManager) SendRequest(ctx context.Context, sessionID
 func (acm *AgentCommunicationManager) registerDefaultProtocols() {
 	// Request-Response Protocol
 	acm.protocols[ProtocolRequestResponse] = &ProtocolHandler{
-		Protocol:    ProtocolRequestResponse,
-		Description: "Request-response communication pattern",
+		Protocol:     ProtocolRequestResponse,
+		Description:  "Request-response communication pattern",
 		Capabilities: []string{"request", "response", "timeout", "retry"},
-		Handler:     acm.handleRequestResponse,
+		Handler:      acm.handleRequestResponse,
 	}
 
 	// Publish-Subscribe Protocol
 	acm.protocols[ProtocolPublishSubscribe] = &ProtocolHandler{
-		Protocol:    ProtocolPublishSubscribe,
-		Description: "Publish-subscribe communication pattern",
+		Protocol:     ProtocolPublishSubscribe,
+		Description:  "Publish-subscribe communication pattern",
 		Capabilities: []string{"publish", "subscribe", "unsubscribe", "filter"},
-		Handler:     acm.handlePublishSubscribe,
+		Handler:      acm.handlePublishSubscribe,
 	}
 
 	// Event-Driven Protocol
 	acm.protocols[ProtocolEventDriven] = &ProtocolHandler{
-		Protocol:    ProtocolEventDriven,
-		Description: "Event-driven communication pattern",
+		Protocol:     ProtocolEventDriven,
+		Description:  "Event-driven communication pattern",
 		Capabilities: []string{"event", "listener", "trigger", "propagation"},
-		Handler:     acm.handleEventDriven,
+		Handler:      acm.handleEventDriven,
 	}
 
 	// Streaming Protocol
 	acm.protocols[ProtocolStreaming] = &ProtocolHandler{
-		Protocol:    ProtocolStreaming,
-		Description: "Streaming communication pattern",
+		Protocol:     ProtocolStreaming,
+		Description:  "Streaming communication pattern",
 		Capabilities: []string{"stream", "chunk", "flow_control", "backpressure"},
-		Handler:     acm.handleStreaming,
+		Handler:      acm.handleStreaming,
 	}
 
 	// Batch Protocol
 	acm.protocols[ProtocolBatch] = &ProtocolHandler{
-		Protocol:    ProtocolBatch,
-		Description: "Batch communication pattern",
+		Protocol:     ProtocolBatch,
+		Description:  "Batch communication pattern",
 		Capabilities: []string{"batch", "aggregate", "flush", "size_limit"},
-		Handler:     acm.handleBatch,
+		Handler:      acm.handleBatch,
 	}
 
 	// Broadcast Protocol
 	acm.protocols[ProtocolBroadcast] = &ProtocolHandler{
-		Protocol:    ProtocolBroadcast,
-		Description: "Broadcast communication pattern",
+		Protocol:     ProtocolBroadcast,
+		Description:  "Broadcast communication pattern",
 		Capabilities: []string{"broadcast", "multicast", "fanout", "replication"},
-		Handler:     acm.handleBroadcast,
+		Handler:      acm.handleBroadcast,
 	}
 }
 
@@ -448,9 +444,9 @@ func (acm *AgentCommunicationManager) handleRequestResponse(ctx context.Context,
 	// Handle request
 	if message.Type == "request" {
 		// Find target agent
-		targetAgent, err := acm.agentRegistry.GetAgent(message.To)
-		if err != nil {
-			return fmt.Errorf("target agent not found: %w", err)
+		targetAgent, exists := acm.agentRegistry.GetAgent(message.To)
+		if !exists || targetAgent == nil {
+			return fmt.Errorf("target agent not found")
 		}
 
 		// Process request
@@ -466,8 +462,8 @@ func (acm *AgentCommunicationManager) handleRequestResponse(ctx context.Context,
 		}
 
 		acm.logger.WithFields(map[string]interface{}{
-			"session_id": session.ID,
-			"request_id": message.ID,
+			"session_id":  session.ID,
+			"request_id":  message.ID,
 			"response_id": responseMessage.ID,
 		}).Debug("Request-response completed")
 	}
@@ -512,7 +508,7 @@ func (acm *AgentCommunicationManager) handleEventDriven(ctx context.Context, ses
 				_, err := acm.SendMessage(ctx, session.ID, message.From, participantID, message.Content, "event_notification")
 				if err != nil {
 					acm.logger.WithError(err).WithFields(map[string]interface{}{
-						"session_id": session.ID,
+						"session_id":  session.ID,
 						"participant": participantID,
 					}).Error("Failed to send event notification")
 				}
@@ -609,15 +605,15 @@ func (acm *AgentCommunicationManager) isParticipant(session *CommunicationSessio
 }
 
 // processRequest processes a request from an agent
-func (acm *AgentCommunicationManager) processRequest(ctx context.Context, agent Agent, request *Message) (interface{}, error) {
+func (acm *AgentCommunicationManager) processRequest(ctx context.Context, agent SpecializedAgentInterface, request *Message) (interface{}, error) {
 	// This is a simplified implementation
 	// In a real system, this would call the agent's request processing method
-	
+
 	// For now, return a simple acknowledgment
 	return map[string]interface{}{
-		"status":    "processed",
-		"agent_id":  agent.ID(),
-		"timestamp": time.Now().Format(time.RFC3339),
+		"status":     "processed",
+		"agent_id":   agent.GetInfo().ID,
+		"timestamp":  time.Now().Format(time.RFC3339),
 		"request_id": request.ID,
 	}, nil
 }
@@ -670,9 +666,9 @@ func (acm *AgentCommunicationManager) GetStatus() map[string]interface{} {
 	defer acm.mu.RUnlock()
 
 	return map[string]interface{}{
-		"active_sessions":    len(acm.activeSessions),
+		"active_sessions":     len(acm.activeSessions),
 		"supported_protocols": len(acm.protocols),
-		"log_entries":       len(acm.communicationLog.Entries),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"log_entries":         len(acm.communicationLog.Entries),
+		"timestamp":           time.Now().Format(time.RFC3339),
 	}
 }

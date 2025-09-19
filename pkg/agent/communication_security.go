@@ -2,13 +2,13 @@ package agent
 
 import (
 	"context"
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -26,51 +26,51 @@ import (
 
 // CommunicationSecurityManager manages security for agent communication
 type CommunicationSecurityManager struct {
-	encryptionKeys  map[string]*EncryptionKey
-	signingKeys     map[string]*SigningKey
-	trustedAgents   map[string]*TrustedAgent
+	encryptionKeys   map[string]*EncryptionKey
+	signingKeys      map[string]*SigningKey
+	trustedAgents    map[string]*TrustedAgent
 	securityPolicies map[string]*SecurityPolicy
-	logger          *logging.Logger
-	mu              sync.RWMutex
+	logger           *logging.Logger
+	mu               sync.RWMutex
 }
 
 // EncryptionKey represents an encryption key
 type EncryptionKey struct {
-	ID          string                 `json:"id"`
-	AgentID     string                 `json:"agent_id"`
-	KeyType     KeyType                `json:"key_type"`
-	PublicKey   []byte                 `json:"public_key"`
-	PrivateKey  []byte                 `json:"private_key"`
-	CreatedAt   time.Time              `json:"created_at"`
-	ExpiresAt   *time.Time             `json:"expires_at,omitempty"`
-	Active      bool                   `json:"active"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	AgentID    string                 `json:"agent_id"`
+	KeyType    KeyType                `json:"key_type"`
+	PublicKey  []byte                 `json:"public_key"`
+	PrivateKey []byte                 `json:"private_key"`
+	CreatedAt  time.Time              `json:"created_at"`
+	ExpiresAt  *time.Time             `json:"expires_at,omitempty"`
+	Active     bool                   `json:"active"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // SigningKey represents a signing key
 type SigningKey struct {
-	ID          string                 `json:"id"`
-	AgentID     string                 `json:"agent_id"`
-	KeyType     KeyType                `json:"key_type"`
-	PublicKey   []byte                 `json:"public_key"`
-	PrivateKey  []byte                 `json:"private_key"`
-	CreatedAt   time.Time              `json:"created_at"`
-	ExpiresAt   *time.Time             `json:"expires_at,omitempty"`
-	Active      bool                   `json:"active"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	AgentID    string                 `json:"agent_id"`
+	KeyType    KeyType                `json:"key_type"`
+	PublicKey  []byte                 `json:"public_key"`
+	PrivateKey []byte                 `json:"private_key"`
+	CreatedAt  time.Time              `json:"created_at"`
+	ExpiresAt  *time.Time             `json:"expires_at,omitempty"`
+	Active     bool                   `json:"active"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // TrustedAgent represents a trusted agent
 type TrustedAgent struct {
-	ID          string                 `json:"id"`
-	AgentID     string                 `json:"agent_id"`
-	AgentType   AgentType              `json:"agent_type"`
-	PublicKey   []byte                 `json:"public_key"`
-	TrustLevel  TrustLevel             `json:"trust_level"`
-	CreatedAt   time.Time              `json:"created_at"`
-	LastSeen    time.Time              `json:"last_seen"`
-	Active      bool                   `json:"active"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID         string                 `json:"id"`
+	AgentID    string                 `json:"agent_id"`
+	AgentType  AgentType              `json:"agent_type"`
+	PublicKey  []byte                 `json:"public_key"`
+	TrustLevel TrustLevel             `json:"trust_level"`
+	CreatedAt  time.Time              `json:"created_at"`
+	LastSeen   time.Time              `json:"last_seen"`
+	Active     bool                   `json:"active"`
+	Metadata   map[string]interface{} `json:"metadata"`
 }
 
 // SecurityPolicy represents a security policy
@@ -87,25 +87,25 @@ type SecurityPolicy struct {
 
 // SecurityRule represents a security rule
 type SecurityRule struct {
-	ID          string                 `json:"id"`
-	Type        SecurityRuleType       `json:"type"`
-	Condition   string                 `json:"condition"`
-	Action      SecurityAction         `json:"action"`
-	Priority    int                    `json:"priority"`
-	Active      bool                   `json:"active"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID        string                 `json:"id"`
+	Type      SecurityRuleType       `json:"type"`
+	Condition string                 `json:"condition"`
+	Action    SecurityAction         `json:"action"`
+	Priority  int                    `json:"priority"`
+	Active    bool                   `json:"active"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // SecureMessage represents a secure message
 type SecureMessage struct {
-	ID            string                 `json:"id"`
-	OriginalMessage *Message             `json:"original_message"`
-	EncryptedData []byte                 `json:"encrypted_data"`
-	Signature     []byte                 `json:"signature"`
-	EncryptionKey string                 `json:"encryption_key"`
-	SigningKey    string                 `json:"signing_key"`
-	Timestamp     time.Time              `json:"timestamp"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	ID              string                 `json:"id"`
+	OriginalMessage *Message               `json:"original_message"`
+	EncryptedData   []byte                 `json:"encrypted_data"`
+	Signature       []byte                 `json:"signature"`
+	EncryptionKey   string                 `json:"encryption_key"`
+	SigningKey      string                 `json:"signing_key"`
+	Timestamp       time.Time              `json:"timestamp"`
+	Metadata        map[string]interface{} `json:"metadata"`
 }
 
 // KeyType represents the type of key
@@ -140,12 +140,12 @@ const (
 type SecurityAction string
 
 const (
-	SecurityActionAllow    SecurityAction = "allow"
-	SecurityActionDeny     SecurityAction = "deny"
-	SecurityActionEncrypt  SecurityAction = "encrypt"
-	SecurityActionSign     SecurityAction = "sign"
-	SecurityActionLog      SecurityAction = "log"
-	SecurityActionAlert    SecurityAction = "alert"
+	SecurityActionAllow   SecurityAction = "allow"
+	SecurityActionDeny    SecurityAction = "deny"
+	SecurityActionEncrypt SecurityAction = "encrypt"
+	SecurityActionSign    SecurityAction = "sign"
+	SecurityActionLog     SecurityAction = "log"
+	SecurityActionAlert   SecurityAction = "alert"
 )
 
 // NewCommunicationSecurityManager creates a new communication security manager
@@ -334,9 +334,9 @@ func (csm *CommunicationSecurityManager) EncryptMessage(ctx context.Context, mes
 	}
 
 	csm.logger.WithFields(map[string]interface{}{
-		"secure_message_id": secureMessage.ID,
+		"secure_message_id":   secureMessage.ID,
 		"original_message_id": message.ID,
-		"encryption_key_id": encryptionKeyID,
+		"encryption_key_id":   encryptionKeyID,
 	}).Debug("Message encrypted successfully")
 
 	return secureMessage, nil
@@ -380,9 +380,9 @@ func (csm *CommunicationSecurityManager) DecryptMessage(ctx context.Context, sec
 	}
 
 	csm.logger.WithFields(map[string]interface{}{
-		"secure_message_id": secureMessage.ID,
+		"secure_message_id":    secureMessage.ID,
 		"decrypted_message_id": message.ID,
-		"encryption_key_id": secureMessage.EncryptionKey,
+		"encryption_key_id":    secureMessage.EncryptionKey,
 	}).Debug("Message decrypted successfully")
 
 	return &message, nil
@@ -529,9 +529,9 @@ func (csm *CommunicationSecurityManager) SignMessage(ctx context.Context, messag
 	}
 
 	csm.logger.WithFields(map[string]interface{}{
-		"secure_message_id": secureMessage.ID,
+		"secure_message_id":   secureMessage.ID,
 		"original_message_id": message.ID,
-		"signing_key_id": signingKeyID,
+		"signing_key_id":      signingKeyID,
 	}).Debug("Message signed successfully")
 
 	return secureMessage, nil
@@ -563,9 +563,9 @@ func (csm *CommunicationSecurityManager) VerifyMessage(ctx context.Context, secu
 	}
 
 	csm.logger.WithFields(map[string]interface{}{
-		"secure_message_id": secureMessage.ID,
+		"secure_message_id":   secureMessage.ID,
 		"original_message_id": secureMessage.OriginalMessage.ID,
-		"signing_key_id": secureMessage.SigningKey,
+		"signing_key_id":      secureMessage.SigningKey,
 	}).Debug("Message signature verified successfully")
 
 	return secureMessage.OriginalMessage, nil
@@ -738,9 +738,9 @@ func (csm *CommunicationSecurityManager) EvaluateSecurityPolicy(ctx context.Cont
 			// Check if rule condition matches
 			if csm.matchesSecurityRule(message, rule) {
 				csm.logger.WithFields(map[string]interface{}{
-					"policy_id": policy.ID,
-					"rule_id":   rule.ID,
-					"action":    rule.Action,
+					"policy_id":  policy.ID,
+					"rule_id":    rule.ID,
+					"action":     rule.Action,
 					"message_id": message.ID,
 				}).Debug("Security rule matched")
 
@@ -757,7 +757,7 @@ func (csm *CommunicationSecurityManager) EvaluateSecurityPolicy(ctx context.Cont
 func (csm *CommunicationSecurityManager) matchesSecurityRule(message *Message, rule *SecurityRule) bool {
 	// This is a simplified implementation
 	// In a real system, this would evaluate the rule condition against the message
-	
+
 	switch rule.Type {
 	case SecurityRuleTypeEncryption:
 		// Check if message should be encrypted

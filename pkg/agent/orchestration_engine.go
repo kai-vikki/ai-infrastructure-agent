@@ -3,10 +3,12 @@ package agent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 )
 
 // =============================================================================
@@ -27,18 +29,18 @@ type EnhancedOrchestrationEngine struct {
 
 // EnhancedTaskScheduler provides advanced task scheduling capabilities
 type EnhancedTaskScheduler struct {
-	coordinator    *CoordinatorAgent
-	agentRegistry  AgentRegistry
-	messageBus     MessageBus
-	logger         *logging.Logger
-	mu             sync.RWMutex
+	coordinator   *CoordinatorAgent
+	agentRegistry AgentRegistryInterface
+	messageBus    MessageBusInterface
+	logger        *logging.Logger
+	mu            sync.RWMutex
 }
 
 // EnhancedDependencyManager provides advanced dependency management
 type EnhancedDependencyManager struct {
-	coordinator   *CoordinatorAgent
-	logger        *logging.Logger
-	mu            sync.RWMutex
+	coordinator *CoordinatorAgent
+	logger      *logging.Logger
+	mu          sync.RWMutex
 }
 
 // EnhancedResultAggregator provides advanced result aggregation
@@ -65,50 +67,50 @@ type PerformanceMonitor struct {
 
 // ExecutionContext contains context for task execution
 type ExecutionContext struct {
-	TaskID        string                 `json:"task_id"`
-	AgentID       string                 `json:"agent_id"`
-	AgentType     AgentType              `json:"agent_type"`
-	Parameters    map[string]interface{} `json:"parameters"`
-	Dependencies  []string               `json:"dependencies"`
-	Priority      int                    `json:"priority"`
-	Timeout       time.Duration          `json:"timeout"`
-	RetryCount    int                    `json:"retry_count"`
-	MaxRetries    int                    `json:"max_retries"`
-	Status        TaskStatus             `json:"status"`
-	CreatedAt     time.Time              `json:"created_at"`
-	StartedAt     *time.Time             `json:"started_at,omitempty"`
-	CompletedAt   *time.Time             `json:"completed_at,omitempty"`
-	Result        map[string]interface{} `json:"result,omitempty"`
-	Error         string                 `json:"error,omitempty"`
+	TaskID       string                 `json:"task_id"`
+	AgentID      string                 `json:"agent_id"`
+	AgentType    AgentType              `json:"agent_type"`
+	Parameters   map[string]interface{} `json:"parameters"`
+	Dependencies []string               `json:"dependencies"`
+	Priority     int                    `json:"priority"`
+	Timeout      time.Duration          `json:"timeout"`
+	RetryCount   int                    `json:"retry_count"`
+	MaxRetries   int                    `json:"max_retries"`
+	Status       string                 `json:"status"`
+	CreatedAt    time.Time              `json:"created_at"`
+	StartedAt    *time.Time             `json:"started_at,omitempty"`
+	CompletedAt  *time.Time             `json:"completed_at,omitempty"`
+	Result       map[string]interface{} `json:"result,omitempty"`
+	Error        string                 `json:"error,omitempty"`
 }
 
 // ExecutionPlan contains the execution plan for a set of tasks
 type ExecutionPlan struct {
-	PlanID        string             `json:"plan_id"`
-	Tasks         []*ExecutionContext `json:"tasks"`
-	Dependencies  map[string][]string `json:"dependencies"`
-	ExecutionOrder []string           `json:"execution_order"`
-	EstimatedDuration string          `json:"estimated_duration"`
-	RiskAssessment map[string]interface{} `json:"risk_assessment"`
-	CreatedAt     time.Time          `json:"created_at"`
-	Status        string             `json:"status"`
+	PlanID            string                 `json:"plan_id"`
+	Tasks             []*ExecutionContext    `json:"tasks"`
+	Dependencies      map[string][]string    `json:"dependencies"`
+	ExecutionOrder    []string               `json:"execution_order"`
+	EstimatedDuration string                 `json:"estimated_duration"`
+	RiskAssessment    map[string]interface{} `json:"risk_assessment"`
+	CreatedAt         time.Time              `json:"created_at"`
+	Status            string                 `json:"status"`
 }
 
 // ExecutionResult contains the result of task execution
 type ExecutionResult struct {
-	PlanID           string                 `json:"plan_id"`
-	TaskID           string                 `json:"task_id"`
-	AgentID          string                 `json:"agent_id"`
-	Status           TaskStatus             `json:"status"`
-	Result           map[string]interface{} `json:"result,omitempty"`
-	Error            string                 `json:"error,omitempty"`
-	ExecutionTime    time.Duration          `json:"execution_time"`
-	RetryCount       int                    `json:"retry_count"`
-	CompletedAt      time.Time              `json:"completed_at"`
+	PlanID        string                 `json:"plan_id"`
+	TaskID        string                 `json:"task_id"`
+	AgentID       string                 `json:"agent_id"`
+	Status        string                 `json:"status"`
+	Result        map[string]interface{} `json:"result,omitempty"`
+	Error         string                 `json:"error,omitempty"`
+	ExecutionTime time.Duration          `json:"execution_time"`
+	RetryCount    int                    `json:"retry_count"`
+	CompletedAt   time.Time              `json:"completed_at"`
 }
 
 // NewEnhancedOrchestrationEngine creates a new enhanced orchestration engine
-func NewEnhancedOrchestrationEngine(coordinator *CoordinatorAgent, agentRegistry AgentRegistry, messageBus MessageBus, logger *logging.Logger) *EnhancedOrchestrationEngine {
+func NewEnhancedOrchestrationEngine(coordinator *CoordinatorAgent, agentRegistry AgentRegistryInterface, messageBus MessageBusInterface, logger *logging.Logger) *EnhancedOrchestrationEngine {
 	engine := &EnhancedOrchestrationEngine{
 		coordinator: coordinator,
 		taskScheduler: &EnhancedTaskScheduler{
@@ -177,10 +179,10 @@ func (eoe *EnhancedOrchestrationEngine) ExecuteTasks(ctx context.Context, tasks 
 	eoe.performanceMonitor.UpdateMetrics(executionPlan, results)
 
 	return map[string]interface{}{
-		"execution_plan":    executionPlan,
-		"results":           results,
-		"aggregated_result": aggregatedResult,
-		"execution_report":  executionReport,
+		"execution_plan":      executionPlan,
+		"results":             results,
+		"aggregated_result":   aggregatedResult,
+		"execution_report":    executionReport,
 		"performance_metrics": eoe.performanceMonitor.GetMetrics(),
 	}, nil
 }
@@ -195,8 +197,8 @@ func (eoe *EnhancedOrchestrationEngine) createExecutionPlan(ctx context.Context,
 		execCtx := &ExecutionContext{
 			TaskID:       task.ID,
 			Parameters:   task.Parameters,
-			Dependencies: []string{}, // Will be filled by dependency manager
-			Priority:     1,          // Default priority
+			Dependencies: []string{},       // Will be filled by dependency manager
+			Priority:     1,                // Default priority
 			Timeout:      30 * time.Minute, // Default timeout
 			RetryCount:   0,
 			MaxRetries:   3, // Default max retries
@@ -301,9 +303,9 @@ func (eoe *EnhancedOrchestrationEngine) executePlan(ctx context.Context, plan *E
 
 	plan.Status = "completed"
 	eoe.logger.WithFields(map[string]interface{}{
-		"plan_id":     plan.PlanID,
-		"task_count":  len(results),
-		"status":      plan.Status,
+		"plan_id":    plan.PlanID,
+		"task_count": len(results),
+		"status":     plan.Status,
 	}).Info("Plan execution completed")
 
 	return results, nil
@@ -409,25 +411,18 @@ func (ets *EnhancedTaskScheduler) FindAgentForTask(task *ExecutionContext) (Spec
 	}
 
 	// Find agents of the target type
-	agents, err := ets.agentRegistry.GetAgentsByType(targetAgentType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get agents of type %s: %w", targetAgentType, err)
-	}
-
+	agents := ets.agentRegistry.FindAgentsByType(targetAgentType)
 	if len(agents) == 0 {
 		return nil, fmt.Errorf("no agents of type %s available", targetAgentType)
 	}
-
-	// For now, return the first available agent
-	// In a real system, this would implement load balancing, health checking, etc.
 	agent := agents[0]
-	task.AgentID = agent.ID()
-	task.AgentType = agent.Type()
+	task.AgentID = agent.GetInfo().ID
+	task.AgentType = agent.GetAgentType()
 
 	ets.logger.WithFields(map[string]interface{}{
-		"task_id":   task.TaskID,
-		"agent_id":  agent.ID(),
-		"agent_type": agent.Type(),
+		"task_id":    task.TaskID,
+		"agent_id":   task.AgentID,
+		"agent_type": task.AgentType,
 	}).Info("Agent found for task")
 
 	return agent, nil
@@ -518,13 +513,13 @@ func (era *EnhancedResultAggregator) AggregateResults(ctx context.Context, resul
 	era.logger.WithField("result_count", len(results)).Info("Aggregating results")
 
 	aggregated := map[string]interface{}{
-		"total_tasks":       len(results),
-		"successful_tasks":  0,
-		"failed_tasks":      0,
+		"total_tasks":          len(results),
+		"successful_tasks":     0,
+		"failed_tasks":         0,
 		"total_execution_time": time.Duration(0),
-		"results":           results,
-		"summary":           make(map[string]interface{}),
-		"timestamp":         time.Now().Format(time.RFC3339),
+		"results":              results,
+		"summary":              make(map[string]interface{}),
+		"timestamp":            time.Now().Format(time.RFC3339),
 	}
 
 	// Count successful and failed tasks
@@ -547,18 +542,18 @@ func (era *EnhancedResultAggregator) AggregateResults(ctx context.Context, resul
 
 	// Generate summary
 	summary := map[string]interface{}{
-		"overall_status":    "completed",
-		"success_rate":      float64(successCount) / float64(len(results)),
-		"total_tasks":       len(results),
+		"overall_status":         "completed",
+		"success_rate":           float64(successCount) / float64(len(results)),
+		"total_tasks":            len(results),
 		"average_execution_time": totalExecutionTime / time.Duration(len(results)),
 	}
 	aggregated["summary"] = summary
 
 	era.logger.WithFields(map[string]interface{}{
-		"total_tasks":       len(results),
-		"successful_tasks":  successCount,
-		"failed_tasks":      failureCount,
-		"success_rate":      summary["success_rate"],
+		"total_tasks":      len(results),
+		"successful_tasks": successCount,
+		"failed_tasks":     failureCount,
+		"success_rate":     summary["success_rate"],
 	}).Info("Results aggregated successfully")
 
 	return aggregated, nil
@@ -582,7 +577,7 @@ func (eh *ErrorHandler) HandleTaskError(task *ExecutionContext, err error) *Exec
 			"retry_count": task.RetryCount,
 			"max_retries": task.MaxRetries,
 		}).Info("Task will be retried")
-		
+
 		// Reset task status for retry
 		task.Status = TaskStatusPending
 		task.StartedAt = nil
@@ -613,7 +608,7 @@ func (pm *PerformanceMonitor) UpdateMetrics(plan *ExecutionPlan, results []*Exec
 
 	pm.metrics["total_plans_executed"] = pm.metrics["total_plans_executed"].(int) + 1
 	pm.metrics["total_tasks_executed"] = pm.metrics["total_tasks_executed"].(int) + len(results)
-	
+
 	// Calculate average execution time
 	var totalTime time.Duration
 	for _, result := range results {
@@ -633,10 +628,10 @@ func (pm *PerformanceMonitor) UpdateMetrics(plan *ExecutionPlan, results []*Exec
 	pm.metrics["overall_success_rate"] = successRate
 
 	pm.logger.WithFields(map[string]interface{}{
-		"total_plans":      pm.metrics["total_plans_executed"],
-		"total_tasks":      pm.metrics["total_tasks_executed"],
-		"average_time":     avgTime,
-		"success_rate":     successRate,
+		"total_plans":  pm.metrics["total_plans_executed"],
+		"total_tasks":  pm.metrics["total_tasks_executed"],
+		"average_time": avgTime,
+		"success_rate": successRate,
 	}).Info("Performance metrics updated")
 }
 
@@ -723,7 +718,7 @@ func (eoe *EnhancedOrchestrationEngine) estimateExecutionDuration(tasks []*Execu
 	// Simple estimation based on task count
 	taskCount := len(tasks)
 	estimatedMinutes := taskCount * 5 // 5 minutes per task on average
-	
+
 	if estimatedMinutes < 60 {
 		return fmt.Sprintf("%d minutes", estimatedMinutes)
 	} else {
@@ -739,8 +734,8 @@ func (eoe *EnhancedOrchestrationEngine) estimateExecutionDuration(tasks []*Execu
 // assessExecutionRisks assesses risks associated with the execution
 func (eoe *EnhancedOrchestrationEngine) assessExecutionRisks(tasks []*ExecutionContext) map[string]interface{} {
 	risks := map[string]interface{}{
-		"overall_risk_level": "medium",
-		"identified_risks":   []string{},
+		"overall_risk_level":    "medium",
+		"identified_risks":      []string{},
 		"mitigation_strategies": []string{},
 	}
 
@@ -784,12 +779,12 @@ func (eoe *EnhancedOrchestrationEngine) assessExecutionRisks(tasks []*ExecutionC
 // generateExecutionReport generates an execution report
 func (eoe *EnhancedOrchestrationEngine) generateExecutionReport(plan *ExecutionPlan, results []*ExecutionResult) map[string]interface{} {
 	report := map[string]interface{}{
-		"plan_id":            plan.PlanID,
-		"execution_summary":  make(map[string]interface{}),
-		"task_results":       results,
+		"plan_id":             plan.PlanID,
+		"execution_summary":   make(map[string]interface{}),
+		"task_results":        results,
 		"performance_metrics": make(map[string]interface{}),
-		"recommendations":    []string{},
-		"generated_at":       time.Now().Format(time.RFC3339),
+		"recommendations":     []string{},
+		"generated_at":        time.Now().Format(time.RFC3339),
 	}
 
 	// Calculate summary statistics
@@ -807,11 +802,11 @@ func (eoe *EnhancedOrchestrationEngine) generateExecutionReport(plan *ExecutionP
 	}
 
 	executionSummary := map[string]interface{}{
-		"total_tasks":       len(results),
-		"successful_tasks":  successCount,
-		"failed_tasks":      failureCount,
-		"success_rate":      float64(successCount) / float64(len(results)),
-		"total_execution_time": totalExecutionTime,
+		"total_tasks":            len(results),
+		"successful_tasks":       successCount,
+		"failed_tasks":           failureCount,
+		"success_rate":           float64(successCount) / float64(len(results)),
+		"total_execution_time":   totalExecutionTime,
 		"average_execution_time": totalExecutionTime / time.Duration(len(results)),
 	}
 	report["execution_summary"] = executionSummary

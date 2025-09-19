@@ -28,24 +28,24 @@ type MessageBusImpl struct {
 	cleanupInterval time.Duration
 
 	// State management
-	mutex       sync.RWMutex
-	running     bool
-	stopChan    chan struct{}
-	logger      *logging.Logger
+	mutex    sync.RWMutex
+	running  bool
+	stopChan chan struct{}
+	logger   *logging.Logger
 
 	// Statistics
-	stats       *MessageBusStats
-	statsMutex  sync.RWMutex
+	stats      *MessageBusStats
+	statsMutex sync.RWMutex
 }
 
 // MessageBusStats contains statistics about the message bus
 type MessageBusStats struct {
-	MessagesSent     int64     `json:"messagesSent"`
-	MessagesReceived int64     `json:"messagesReceived"`
-	MessagesDropped  int64     `json:"messagesDropped"`
-	ActiveSubscribers int      `json:"activeSubscribers"`
-	QueueSizes       map[string]int `json:"queueSizes"`
-	LastActivity     time.Time `json:"lastActivity"`
+	MessagesSent      int64          `json:"messagesSent"`
+	MessagesReceived  int64          `json:"messagesReceived"`
+	MessagesDropped   int64          `json:"messagesDropped"`
+	ActiveSubscribers int            `json:"activeSubscribers"`
+	QueueSizes        map[string]int `json:"queueSizes"`
+	LastActivity      time.Time      `json:"lastActivity"`
 }
 
 // NewMessageBus creates a new message bus instance
@@ -202,7 +202,7 @@ func (mb *MessageBusImpl) Broadcast(message *AgentMessage, agentTypes []AgentTyp
 		if queue, exists := mb.messageQueues[agentID]; exists {
 			if len(queue) < mb.maxQueueSize {
 				mb.messageQueues[agentID] = append(queue, broadcastMessage)
-				
+
 				// Update queue size statistics
 				mb.statsMutex.Lock()
 				mb.stats.QueueSizes[agentID] = len(mb.messageQueues[agentID])
@@ -248,7 +248,7 @@ func (mb *MessageBusImpl) ClearMessageQueue(agentID string) error {
 	}
 
 	mb.messageQueues[agentID] = make([]*AgentMessage, 0)
-	
+
 	// Update statistics
 	mb.statsMutex.Lock()
 	mb.stats.QueueSizes[agentID] = 0
@@ -319,7 +319,7 @@ func (mb *MessageBusImpl) validateMessage(message *AgentMessage) error {
 		return fmt.Errorf("message sender cannot be empty")
 	}
 
-	if message.To == "" && message.MessageType != MessageTypeBroadcast {
+	if message.To == "" {
 		return fmt.Errorf("message recipient cannot be empty")
 	}
 
@@ -332,8 +332,8 @@ func (mb *MessageBusImpl) validateMessage(message *AgentMessage) error {
 
 // routeMessageInternal routes a message to the appropriate agent (internal method)
 func (mb *MessageBusImpl) routeMessageInternal(message *AgentMessage) error {
-	// Handle broadcast messages
-	if message.To == "" || message.MessageType == MessageTypeBroadcast {
+	// Handle broadcast messages (empty To means broadcast)
+	if message.To == "" {
 		return mb.Broadcast(message, nil)
 	}
 
@@ -347,7 +347,7 @@ func (mb *MessageBusImpl) routeMessageInternal(message *AgentMessage) error {
 	if queue, exists := mb.messageQueues[message.To]; exists {
 		if len(queue) < mb.maxQueueSize {
 			mb.messageQueues[message.To] = append(queue, message)
-			
+
 			// Update queue size statistics
 			mb.statsMutex.Lock()
 			mb.stats.QueueSizes[message.To] = len(mb.messageQueues[message.To])
@@ -376,8 +376,8 @@ func (mb *MessageBusImpl) processMessage(agentID string, message *AgentMessage, 
 	// Process the message
 	if err := handler.HandleMessage(ctx, message); err != nil {
 		mb.logger.WithError(err).WithFields(map[string]interface{}{
-			"agent_id":    agentID,
-			"message_id":  message.ID,
+			"agent_id":     agentID,
+			"message_id":   message.ID,
 			"message_type": message.MessageType,
 		}).Error("Failed to process message")
 	} else {
@@ -395,7 +395,7 @@ func (mb *MessageBusImpl) processMessage(agentID string, message *AgentMessage, 
 				break
 			}
 		}
-		
+
 		// Update queue size statistics
 		mb.statsMutex.Lock()
 		mb.stats.QueueSizes[agentID] = len(mb.messageQueues[agentID])
@@ -457,7 +457,7 @@ func (mb *MessageBusImpl) cleanupExpiredMessages() {
 			}
 		}
 		mb.messageQueues[agentID] = validMessages
-		
+
 		// Update queue size statistics
 		mb.statsMutex.Lock()
 		mb.stats.QueueSizes[agentID] = len(validMessages)

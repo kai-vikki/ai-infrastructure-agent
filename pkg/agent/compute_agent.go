@@ -19,28 +19,28 @@ import (
 // ComputeAgent handles compute-related infrastructure tasks
 type ComputeAgent struct {
 	*BaseAgent
-	taskQueue        chan *Task
-	ec2Tools         map[string]interfaces.MCPTool
-	asgTools         map[string]interfaces.MCPTool
-	albTools         map[string]interfaces.MCPTool
-	amiTools         map[string]interfaces.MCPTool
-	zoneTools        map[string]interfaces.MCPTool
-	awsClient        *aws.Client
-	logger           *logging.Logger
+	taskQueue chan *Task
+	ec2Tools  map[string]interfaces.MCPTool
+	asgTools  map[string]interfaces.MCPTool
+	albTools  map[string]interfaces.MCPTool
+	amiTools  map[string]interfaces.MCPTool
+	zoneTools map[string]interfaces.MCPTool
+	awsClient *aws.Client
+	logger    *logging.Logger
 }
 
 // NewComputeAgent creates a new compute agent
 func NewComputeAgent(baseAgent *BaseAgent, awsClient *aws.Client, logger *logging.Logger) *ComputeAgent {
 	agent := &ComputeAgent{
-		BaseAgent:    baseAgent,
-		taskQueue:    make(chan *Task, 50),
-		ec2Tools:     make(map[string]interfaces.MCPTool),
-		asgTools:     make(map[string]interfaces.MCPTool),
-		albTools:     make(map[string]interfaces.MCPTool),
-		amiTools:     make(map[string]interfaces.MCPTool),
-		zoneTools:    make(map[string]interfaces.MCPTool),
-		awsClient:    awsClient,
-		logger:       logger,
+		BaseAgent: baseAgent,
+		taskQueue: make(chan *Task, 50),
+		ec2Tools:  make(map[string]interfaces.MCPTool),
+		asgTools:  make(map[string]interfaces.MCPTool),
+		albTools:  make(map[string]interfaces.MCPTool),
+		amiTools:  make(map[string]interfaces.MCPTool),
+		zoneTools: make(map[string]interfaces.MCPTool),
+		awsClient: awsClient,
+		logger:    logger,
 	}
 
 	// Set agent type
@@ -96,41 +96,41 @@ func (ca *ComputeAgent) GetCapabilities() []AgentCapability {
 // GetSpecializedTools returns tools specific to compute management
 func (ca *ComputeAgent) GetSpecializedTools() []interfaces.MCPTool {
 	var computeTools []interfaces.MCPTool
-	
+
 	// Add EC2 tools
 	for _, tool := range ca.ec2Tools {
 		computeTools = append(computeTools, tool)
 	}
-	
+
 	// Add ASG tools
 	for _, tool := range ca.asgTools {
 		computeTools = append(computeTools, tool)
 	}
-	
+
 	// Add ALB tools
 	for _, tool := range ca.albTools {
 		computeTools = append(computeTools, tool)
 	}
-	
+
 	// Add AMI tools
 	for _, tool := range ca.amiTools {
 		computeTools = append(computeTools, tool)
 	}
-	
+
 	// Add zone tools
 	for _, tool := range ca.zoneTools {
 		computeTools = append(computeTools, tool)
 	}
-	
+
 	return computeTools
 }
 
 // ProcessTask processes a compute-related task
 func (ca *ComputeAgent) ProcessTask(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithFields(map[string]interface{}{
-		"agent_id":   ca.id,
-		"task_id":    task.ID,
-		"task_type":  task.Type,
+		"agent_id":  ca.id,
+		"task_id":   task.ID,
+		"task_type": task.Type,
 	}).Info("Processing compute task")
 
 	// Update task status
@@ -191,29 +191,29 @@ func (ca *ComputeAgent) CoordinateWith(otherAgent SpecializedAgentInterface) err
 	switch otherAgent.GetAgentType() {
 	case AgentTypeNetwork:
 		ca.logger.WithFields(map[string]interface{}{
-			"agent_id":      ca.id,
-			"other_agent":   otherAgent.GetInfo().ID,
-			"other_type":    otherAgent.GetAgentType(),
+			"agent_id":    ca.id,
+			"other_agent": otherAgent.GetInfo().ID,
+			"other_type":  otherAgent.GetAgentType(),
 		}).Info("Coordinating with network agent for compute configuration")
-		
+
 		// Compute agent requests network information from network agent
 		return ca.requestNetworkInfoFromNetwork(otherAgent)
-		
+
 	case AgentTypeSecurity:
 		ca.logger.WithFields(map[string]interface{}{
-			"agent_id":      ca.id,
-			"other_agent":   otherAgent.GetInfo().ID,
-			"other_type":    otherAgent.GetAgentType(),
+			"agent_id":    ca.id,
+			"other_agent": otherAgent.GetInfo().ID,
+			"other_type":  otherAgent.GetAgentType(),
 		}).Info("Coordinating with security agent for compute security")
-		
+
 		// Compute agent requests security group information from security agent
 		return ca.requestSecurityInfoFromSecurity(otherAgent)
-		
+
 	default:
 		ca.logger.WithFields(map[string]interface{}{
-			"agent_id":      ca.id,
-			"other_agent":   otherAgent.GetInfo().ID,
-			"other_type":    otherAgent.GetAgentType(),
+			"agent_id":    ca.id,
+			"other_agent": otherAgent.GetInfo().ID,
+			"other_type":  otherAgent.GetAgentType(),
 		}).Info("Coordinating with other agent type")
 	}
 	return nil
@@ -253,19 +253,19 @@ func (ca *ComputeAgent) ProvideHelp(ctx context.Context, request *AgentRequest) 
 func (ca *ComputeAgent) initializeComputeTools() {
 	// Create tool factory
 	toolFactory := tools.NewToolFactory(ca.awsClient, ca.logger)
-	
+
 	// Initialize EC2 tools
 	ca.initializeEC2Tools(toolFactory)
-	
+
 	// Initialize ASG tools
 	ca.initializeASGTools(toolFactory)
-	
+
 	// Initialize ALB tools
 	ca.initializeALBTools(toolFactory)
-	
+
 	// Initialize AMI tools
 	ca.initializeAMITools(toolFactory)
-	
+
 	// Initialize zone tools
 	ca.initializeZoneTools(toolFactory)
 }
@@ -280,7 +280,7 @@ func (ca *ComputeAgent) initializeEC2Tools(toolFactory interfaces.ToolFactory) {
 		"terminate-ec2-instance",
 		"create-ami-from-instance",
 	}
-	
+
 	for _, toolType := range ec2ToolTypes {
 		tool, err := toolFactory.CreateTool(toolType, &tools.ToolDependencies{
 			AWSClient: ca.awsClient,
@@ -289,7 +289,7 @@ func (ca *ComputeAgent) initializeEC2Tools(toolFactory interfaces.ToolFactory) {
 			ca.logger.WithError(err).WithField("tool_type", toolType).Error("Failed to create EC2 tool")
 			continue
 		}
-		
+
 		ca.ec2Tools[toolType] = tool
 		ca.AddTool(tool)
 	}
@@ -303,7 +303,7 @@ func (ca *ComputeAgent) initializeASGTools(toolFactory interfaces.ToolFactory) {
 		"list-auto-scaling-groups",
 		"list-launch-templates",
 	}
-	
+
 	for _, toolType := range asgToolTypes {
 		tool, err := toolFactory.CreateTool(toolType, &tools.ToolDependencies{
 			AWSClient: ca.awsClient,
@@ -312,7 +312,7 @@ func (ca *ComputeAgent) initializeASGTools(toolFactory interfaces.ToolFactory) {
 			ca.logger.WithError(err).WithField("tool_type", toolType).Error("Failed to create ASG tool")
 			continue
 		}
-		
+
 		ca.asgTools[toolType] = tool
 		ca.AddTool(tool)
 	}
@@ -329,7 +329,7 @@ func (ca *ComputeAgent) initializeALBTools(toolFactory interfaces.ToolFactory) {
 		"register-targets",
 		"deregister-targets",
 	}
-	
+
 	for _, toolType := range albToolTypes {
 		tool, err := toolFactory.CreateTool(toolType, &tools.ToolDependencies{
 			AWSClient: ca.awsClient,
@@ -338,7 +338,7 @@ func (ca *ComputeAgent) initializeALBTools(toolFactory interfaces.ToolFactory) {
 			ca.logger.WithError(err).WithField("tool_type", toolType).Error("Failed to create ALB tool")
 			continue
 		}
-		
+
 		ca.albTools[toolType] = tool
 		ca.AddTool(tool)
 	}
@@ -352,7 +352,7 @@ func (ca *ComputeAgent) initializeAMITools(toolFactory interfaces.ToolFactory) {
 		"get-latest-windows-ami",
 		"list-amis",
 	}
-	
+
 	for _, toolType := range amiToolTypes {
 		tool, err := toolFactory.CreateTool(toolType, &tools.ToolDependencies{
 			AWSClient: ca.awsClient,
@@ -361,7 +361,7 @@ func (ca *ComputeAgent) initializeAMITools(toolFactory interfaces.ToolFactory) {
 			ca.logger.WithError(err).WithField("tool_type", toolType).Error("Failed to create AMI tool")
 			continue
 		}
-		
+
 		ca.amiTools[toolType] = tool
 		ca.AddTool(tool)
 	}
@@ -372,7 +372,7 @@ func (ca *ComputeAgent) initializeZoneTools(toolFactory interfaces.ToolFactory) 
 	zoneToolTypes := []string{
 		"get-availability-zones",
 	}
-	
+
 	for _, toolType := range zoneToolTypes {
 		tool, err := toolFactory.CreateTool(toolType, &tools.ToolDependencies{
 			AWSClient: ca.awsClient,
@@ -381,7 +381,7 @@ func (ca *ComputeAgent) initializeZoneTools(toolFactory interfaces.ToolFactory) 
 			ca.logger.WithError(err).WithField("tool_type", toolType).Error("Failed to create zone tool")
 			continue
 		}
-		
+
 		ca.zoneTools[toolType] = tool
 		ca.AddTool(tool)
 	}
@@ -394,7 +394,7 @@ func (ca *ComputeAgent) initializeZoneTools(toolFactory interfaces.ToolFactory) 
 // createEC2Instance creates a new EC2 instance
 func (ca *ComputeAgent) createEC2Instance(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating EC2 instance")
-	
+
 	// Extract parameters
 	instanceType := "t3.micro"
 	if instanceTypeParam, exists := task.Parameters["instanceType"]; exists {
@@ -402,38 +402,41 @@ func (ca *ComputeAgent) createEC2Instance(ctx context.Context, task *Task) (*Tas
 			instanceType = instanceTypeStr
 		}
 	}
-	
+
 	amiId := ""
 	if ami, exists := task.Parameters["amiId"]; exists {
 		if amiStr, ok := ami.(string); ok {
 			amiId = amiStr
 		}
 	}
-	
+
 	// If no AMI specified, get latest Amazon Linux AMI
 	if amiId == "" {
 		amiTool, exists := ca.amiTools["get-latest-amazon-linux-ami"]
 		if exists {
 			result, err := amiTool.Execute(ctx, map[string]interface{}{})
 			if err == nil && len(result.Content) > 0 {
-				amiId = result.Content[0].Text
+				// Best-effort extraction
+				if v := result.Content[0]; v != nil {
+					amiId = fmt.Sprintf("%v", v)
+				}
 			}
 		}
 	}
-	
+
 	if amiId == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "AMI ID is required for EC2 instance creation"
 		return task, fmt.Errorf("AMI ID is required for EC2 instance creation")
 	}
-	
+
 	subnetId := ""
 	if subnet, exists := task.Parameters["subnetId"]; exists {
 		if subnetStr, ok := subnet.(string); ok {
 			subnetId = subnetStr
 		}
 	}
-	
+
 	securityGroupIds := []string{}
 	if securityGroups, exists := task.Parameters["securityGroupIds"]; exists {
 		if sgList, ok := securityGroups.([]interface{}); ok {
@@ -444,21 +447,21 @@ func (ca *ComputeAgent) createEC2Instance(ctx context.Context, task *Task) (*Tas
 			}
 		}
 	}
-	
+
 	keyName := ""
 	if key, exists := task.Parameters["keyName"]; exists {
 		if keyStr, ok := key.(string); ok {
 			keyName = keyStr
 		}
 	}
-	
+
 	name := "compute-agent-instance"
 	if nameParam, exists := task.Parameters["name"]; exists {
 		if nameStr, ok := nameParam.(string); ok {
 			name = nameStr
 		}
 	}
-	
+
 	// Use EC2 tool to create instance
 	tool, exists := ca.ec2Tools["create-ec2-instance"]
 	if !exists {
@@ -466,55 +469,59 @@ func (ca *ComputeAgent) createEC2Instance(ctx context.Context, task *Task) (*Tas
 		task.Error = "EC2 instance creation tool not available"
 		return task, fmt.Errorf("EC2 instance creation tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{
-		"instanceType":      instanceType,
+		"instanceType":     instanceType,
 		"amiId":            amiId,
 		"subnetId":         subnetId,
 		"securityGroupIds": securityGroupIds,
 		"keyName":          keyName,
 		"name":             name,
 		"tags": map[string]string{
-			"Name":        name,
-			"CreatedBy":   "compute-agent",
-			"TaskID":      task.ID,
+			"Name":      name,
+			"CreatedBy": "compute-agent",
+			"TaskID":    task.ID,
 		},
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create EC2 instance: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
-	task.Result = map[string]interface{}{
-		"instance_id":       result.Content[0].Text,
-		"instance_type":     instanceType,
-		"ami_id":            amiId,
-		"subnet_id":         subnetId,
-		"security_group_ids": securityGroupIds,
-		"key_name":          keyName,
-		"name":              name,
-		"status":            "created",
+	var instanceID interface{}
+	if len(result.Content) > 0 {
+		instanceID = result.Content[0]
 	}
-	
+	task.Result = map[string]interface{}{
+		"instance_id":        instanceID,
+		"instance_type":      instanceType,
+		"ami_id":             amiId,
+		"subnet_id":          subnetId,
+		"security_group_ids": securityGroupIds,
+		"key_name":           keyName,
+		"name":               name,
+		"status":             "created",
+	}
+
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":      task.ID,
-		"instance_id":  result.Content[0].Text,
+		"task_id":     task.ID,
+		"instance_id": instanceID,
 	}).Info("EC2 instance created successfully")
-	
+
 	return task, nil
 }
 
 // createAutoScalingGroup creates a new auto scaling group
 func (ca *ComputeAgent) createAutoScalingGroup(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating auto scaling group")
-	
+
 	// Extract parameters
 	asgName := "compute-agent-asg"
 	if nameParam, exists := task.Parameters["asgName"]; exists {
@@ -522,41 +529,41 @@ func (ca *ComputeAgent) createAutoScalingGroup(ctx context.Context, task *Task) 
 			asgName = nameStr
 		}
 	}
-	
+
 	launchTemplateId := ""
 	if launchTemplate, exists := task.Parameters["launchTemplateId"]; exists {
 		if launchTemplateStr, ok := launchTemplate.(string); ok {
 			launchTemplateId = launchTemplateStr
 		}
 	}
-	
+
 	if launchTemplateId == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "Launch template ID is required for ASG creation"
 		return task, fmt.Errorf("launch template ID is required for ASG creation")
 	}
-	
+
 	minSize := 1
 	if min, exists := task.Parameters["minSize"]; exists {
 		if minInt, ok := min.(int); ok {
 			minSize = minInt
 		}
 	}
-	
+
 	maxSize := 3
 	if max, exists := task.Parameters["maxSize"]; exists {
 		if maxInt, ok := max.(int); ok {
 			maxSize = maxInt
 		}
 	}
-	
+
 	desiredCapacity := 2
 	if desired, exists := task.Parameters["desiredCapacity"]; exists {
 		if desiredInt, ok := desired.(int); ok {
 			desiredCapacity = desiredInt
 		}
 	}
-	
+
 	subnetIds := []string{}
 	if subnets, exists := task.Parameters["subnetIds"]; exists {
 		if subnetList, ok := subnets.([]interface{}); ok {
@@ -567,7 +574,7 @@ func (ca *ComputeAgent) createAutoScalingGroup(ctx context.Context, task *Task) 
 			}
 		}
 	}
-	
+
 	// Use ASG tool to create auto scaling group
 	tool, exists := ca.asgTools["create-auto-scaling-group"]
 	if !exists {
@@ -575,54 +582,54 @@ func (ca *ComputeAgent) createAutoScalingGroup(ctx context.Context, task *Task) 
 		task.Error = "ASG creation tool not available"
 		return task, fmt.Errorf("ASG creation tool not available")
 	}
-	
+
 	// Execute tool
-	result, err := tool.Execute(ctx, map[string]interface{}{
-		"asgName":         asgName,
+	_, err := tool.Execute(ctx, map[string]interface{}{
+		"asgName":          asgName,
 		"launchTemplateId": launchTemplateId,
-		"minSize":         minSize,
-		"maxSize":         maxSize,
-		"desiredCapacity": desiredCapacity,
-		"subnetIds":       subnetIds,
+		"minSize":          minSize,
+		"maxSize":          maxSize,
+		"desiredCapacity":  desiredCapacity,
+		"subnetIds":        subnetIds,
 		"tags": map[string]string{
-			"Name":        asgName,
-			"CreatedBy":   "compute-agent",
-			"TaskID":      task.ID,
+			"Name":      asgName,
+			"CreatedBy": "compute-agent",
+			"TaskID":    task.ID,
 		},
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create auto scaling group: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
 	task.Result = map[string]interface{}{
-		"asg_name":          asgName,
+		"asg_name":           asgName,
 		"launch_template_id": launchTemplateId,
-		"min_size":          minSize,
-		"max_size":          maxSize,
-		"desired_capacity":  desiredCapacity,
-		"subnet_ids":        subnetIds,
-		"status":            "created",
+		"min_size":           minSize,
+		"max_size":           maxSize,
+		"desired_capacity":   desiredCapacity,
+		"subnet_ids":         subnetIds,
+		"status":             "created",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
 		"task_id":  task.ID,
 		"asg_name": asgName,
 	}).Info("Auto scaling group created successfully")
-	
+
 	return task, nil
 }
 
 // createLaunchTemplate creates a new launch template
 func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating launch template")
-	
+
 	// Extract parameters
 	templateName := "compute-agent-launch-template"
 	if nameParam, exists := task.Parameters["templateName"]; exists {
@@ -630,38 +637,38 @@ func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*
 			templateName = nameStr
 		}
 	}
-	
+
 	instanceType := "t3.micro"
 	if instanceTypeParam, exists := task.Parameters["instanceType"]; exists {
 		if instanceTypeStr, ok := instanceTypeParam.(string); ok {
 			instanceType = instanceTypeStr
 		}
 	}
-	
+
 	amiId := ""
 	if ami, exists := task.Parameters["amiId"]; exists {
 		if amiStr, ok := ami.(string); ok {
 			amiId = amiStr
 		}
 	}
-	
+
 	// If no AMI specified, get latest Amazon Linux AMI
 	if amiId == "" {
 		amiTool, exists := ca.amiTools["get-latest-amazon-linux-ami"]
 		if exists {
-			result, err := amiTool.Execute(ctx, map[string]interface{}{})
-			if err == nil && len(result.Content) > 0 {
-				amiId = result.Content[0].Text
+			res, err := amiTool.Execute(ctx, map[string]interface{}{})
+			if err == nil && len(res.Content) > 0 && res.Content[0] != nil {
+				amiId = fmt.Sprintf("%v", res.Content[0])
 			}
 		}
 	}
-	
+
 	if amiId == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "AMI ID is required for launch template creation"
 		return task, fmt.Errorf("AMI ID is required for launch template creation")
 	}
-	
+
 	securityGroupIds := []string{}
 	if securityGroups, exists := task.Parameters["securityGroupIds"]; exists {
 		if sgList, ok := securityGroups.([]interface{}); ok {
@@ -672,14 +679,14 @@ func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*
 			}
 		}
 	}
-	
+
 	keyName := ""
 	if key, exists := task.Parameters["keyName"]; exists {
 		if keyStr, ok := key.(string); ok {
 			keyName = keyStr
 		}
 	}
-	
+
 	// Use launch template tool to create launch template
 	tool, exists := ca.asgTools["create-launch-template"]
 	if !exists {
@@ -687,7 +694,7 @@ func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*
 		task.Error = "Launch template creation tool not available"
 		return task, fmt.Errorf("launch template creation tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{
 		"templateName":     templateName,
@@ -696,24 +703,28 @@ func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*
 		"securityGroupIds": securityGroupIds,
 		"keyName":          keyName,
 		"tags": map[string]string{
-			"Name":        templateName,
-			"CreatedBy":   "compute-agent",
-			"TaskID":      task.ID,
+			"Name":      templateName,
+			"CreatedBy": "compute-agent",
+			"TaskID":    task.ID,
 		},
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create launch template: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
+	var launchTemplateID interface{}
+	if len(result.Content) > 0 {
+		launchTemplateID = result.Content[0]
+	}
 	task.Result = map[string]interface{}{
-		"launch_template_id": result.Content[0].Text,
+		"launch_template_id": launchTemplateID,
 		"template_name":      templateName,
 		"instance_type":      instanceType,
 		"ami_id":             amiId,
@@ -721,19 +732,19 @@ func (ca *ComputeAgent) createLaunchTemplate(ctx context.Context, task *Task) (*
 		"key_name":           keyName,
 		"status":             "created",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":           task.ID,
-		"launch_template_id": result.Content[0].Text,
+		"task_id":            task.ID,
+		"launch_template_id": launchTemplateID,
 	}).Info("Launch template created successfully")
-	
+
 	return task, nil
 }
 
 // createLoadBalancer creates a new application load balancer
 func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating load balancer")
-	
+
 	// Extract parameters
 	lbName := "compute-agent-alb"
 	if nameParam, exists := task.Parameters["lbName"]; exists {
@@ -741,7 +752,7 @@ func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Ta
 			lbName = nameStr
 		}
 	}
-	
+
 	subnetIds := []string{}
 	if subnets, exists := task.Parameters["subnetIds"]; exists {
 		if subnetList, ok := subnets.([]interface{}); ok {
@@ -752,7 +763,7 @@ func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Ta
 			}
 		}
 	}
-	
+
 	securityGroupIds := []string{}
 	if securityGroups, exists := task.Parameters["securityGroupIds"]; exists {
 		if sgList, ok := securityGroups.([]interface{}); ok {
@@ -763,14 +774,14 @@ func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Ta
 			}
 		}
 	}
-	
+
 	scheme := "internet-facing"
 	if schemeParam, exists := task.Parameters["scheme"]; exists {
 		if schemeStr, ok := schemeParam.(string); ok {
 			scheme = schemeStr
 		}
 	}
-	
+
 	// Use ALB tool to create load balancer
 	tool, exists := ca.albTools["create-load-balancer"]
 	if !exists {
@@ -778,7 +789,7 @@ func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Ta
 		task.Error = "Load balancer creation tool not available"
 		return task, fmt.Errorf("load balancer creation tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{
 		"lbName":           lbName,
@@ -786,43 +797,47 @@ func (ca *ComputeAgent) createLoadBalancer(ctx context.Context, task *Task) (*Ta
 		"securityGroupIds": securityGroupIds,
 		"scheme":           scheme,
 		"tags": map[string]string{
-			"Name":        lbName,
-			"CreatedBy":   "compute-agent",
-			"TaskID":      task.ID,
+			"Name":      lbName,
+			"CreatedBy": "compute-agent",
+			"TaskID":    task.ID,
 		},
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create load balancer: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
-	task.Result = map[string]interface{}{
-		"load_balancer_arn": result.Content[0].Text,
-		"lb_name":           lbName,
-		"subnet_ids":        subnetIds,
-		"security_group_ids": securityGroupIds,
-		"scheme":            scheme,
-		"status":            "created",
+	var lbArn interface{}
+	if len(result.Content) > 0 {
+		lbArn = result.Content[0]
 	}
-	
+	task.Result = map[string]interface{}{
+		"load_balancer_arn":  lbArn,
+		"lb_name":            lbName,
+		"subnet_ids":         subnetIds,
+		"security_group_ids": securityGroupIds,
+		"scheme":             scheme,
+		"status":             "created",
+	}
+
 	ca.logger.WithFields(map[string]interface{}{
 		"task_id":           task.ID,
-		"load_balancer_arn": result.Content[0].Text,
+		"load_balancer_arn": lbArn,
 	}).Info("Load balancer created successfully")
-	
+
 	return task, nil
 }
 
 // createTargetGroup creates a new target group
 func (ca *ComputeAgent) createTargetGroup(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating target group")
-	
+
 	// Extract parameters
 	tgName := "compute-agent-tg"
 	if nameParam, exists := task.Parameters["tgName"]; exists {
@@ -830,34 +845,34 @@ func (ca *ComputeAgent) createTargetGroup(ctx context.Context, task *Task) (*Tas
 			tgName = nameStr
 		}
 	}
-	
+
 	vpcId := ""
 	if vpc, exists := task.Parameters["vpcId"]; exists {
 		if vpcStr, ok := vpc.(string); ok {
 			vpcId = vpcStr
 		}
 	}
-	
+
 	if vpcId == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "VPC ID is required for target group creation"
 		return task, fmt.Errorf("VPC ID is required for target group creation")
 	}
-	
+
 	port := 80
 	if portParam, exists := task.Parameters["port"]; exists {
 		if portInt, ok := portParam.(int); ok {
 			port = portInt
 		}
 	}
-	
+
 	protocol := "HTTP"
 	if protocolParam, exists := task.Parameters["protocol"]; exists {
 		if protocolStr, ok := protocolParam.(string); ok {
 			protocol = protocolStr
 		}
 	}
-	
+
 	// Use target group tool to create target group
 	tool, exists := ca.albTools["create-target-group"]
 	if !exists {
@@ -865,7 +880,7 @@ func (ca *ComputeAgent) createTargetGroup(ctx context.Context, task *Task) (*Tas
 		task.Error = "Target group creation tool not available"
 		return task, fmt.Errorf("target group creation tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{
 		"tgName":   tgName,
@@ -873,43 +888,47 @@ func (ca *ComputeAgent) createTargetGroup(ctx context.Context, task *Task) (*Tas
 		"port":     port,
 		"protocol": protocol,
 		"tags": map[string]string{
-			"Name":        tgName,
-			"CreatedBy":   "compute-agent",
-			"TaskID":      task.ID,
+			"Name":      tgName,
+			"CreatedBy": "compute-agent",
+			"TaskID":    task.ID,
 		},
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create target group: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
+	var tgArnOut interface{}
+	if len(result.Content) > 0 {
+		tgArnOut = result.Content[0]
+	}
 	task.Result = map[string]interface{}{
-		"target_group_arn": result.Content[0].Text,
+		"target_group_arn": tgArnOut,
 		"tg_name":          tgName,
 		"vpc_id":           vpcId,
 		"port":             port,
 		"protocol":         protocol,
 		"status":           "created",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
 		"task_id":          task.ID,
-		"target_group_arn": result.Content[0].Text,
+		"target_group_arn": tgArnOut,
 	}).Info("Target group created successfully")
-	
+
 	return task, nil
 }
 
 // createListener creates a new listener
 func (ca *ComputeAgent) createListener(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Creating listener")
-	
+
 	// Extract parameters
 	loadBalancerArn := ""
 	if lbArn, exists := task.Parameters["loadBalancerArn"]; exists {
@@ -917,40 +936,40 @@ func (ca *ComputeAgent) createListener(ctx context.Context, task *Task) (*Task, 
 			loadBalancerArn = lbArnStr
 		}
 	}
-	
+
 	if loadBalancerArn == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "Load balancer ARN is required for listener creation"
 		return task, fmt.Errorf("load balancer ARN is required for listener creation")
 	}
-	
+
 	targetGroupArn := ""
 	if tgArn, exists := task.Parameters["targetGroupArn"]; exists {
 		if tgArnStr, ok := tgArn.(string); ok {
 			targetGroupArn = tgArnStr
 		}
 	}
-	
+
 	if targetGroupArn == "" {
 		task.Status = TaskStatusFailed
 		task.Error = "Target group ARN is required for listener creation"
 		return task, fmt.Errorf("target group ARN is required for listener creation")
 	}
-	
+
 	port := 80
 	if portParam, exists := task.Parameters["port"]; exists {
 		if portInt, ok := portParam.(int); ok {
 			port = portInt
 		}
 	}
-	
+
 	protocol := "HTTP"
 	if protocolParam, exists := task.Parameters["protocol"]; exists {
 		if protocolStr, ok := protocolParam.(string); ok {
 			protocol = protocolStr
 		}
 	}
-	
+
 	// Use listener tool to create listener
 	tool, exists := ca.albTools["create-listener"]
 	if !exists {
@@ -958,7 +977,7 @@ func (ca *ComputeAgent) createListener(ctx context.Context, task *Task) (*Task, 
 		task.Error = "Listener creation tool not available"
 		return task, fmt.Errorf("listener creation tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{
 		"loadBalancerArn": loadBalancerArn,
@@ -966,38 +985,42 @@ func (ca *ComputeAgent) createListener(ctx context.Context, task *Task) (*Task, 
 		"port":            port,
 		"protocol":        protocol,
 	})
-	
+
 	if err != nil {
 		task.Status = TaskStatusFailed
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to create listener: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
+	var listenerArn interface{}
+	if len(result.Content) > 0 {
+		listenerArn = result.Content[0]
+	}
 	task.Result = map[string]interface{}{
-		"listener_arn":      result.Content[0].Text,
+		"listener_arn":      listenerArn,
 		"load_balancer_arn": loadBalancerArn,
 		"target_group_arn":  targetGroupArn,
 		"port":              port,
 		"protocol":          protocol,
 		"status":            "created",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
-		"task_id":       task.ID,
-		"listener_arn":  result.Content[0].Text,
+		"task_id":      task.ID,
+		"listener_arn": listenerArn,
 	}).Info("Listener created successfully")
-	
+
 	return task, nil
 }
 
 // getLatestAMI gets the latest AMI for a specific OS
 func (ca *ComputeAgent) getLatestAMI(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Getting latest AMI")
-	
+
 	// Extract parameters
 	osType := "amazon-linux"
 	if os, exists := task.Parameters["osType"]; exists {
@@ -1005,7 +1028,7 @@ func (ca *ComputeAgent) getLatestAMI(ctx context.Context, task *Task) (*Task, er
 			osType = osStr
 		}
 	}
-	
+
 	// Determine tool based on OS type
 	var toolType string
 	switch osType {
@@ -1018,7 +1041,7 @@ func (ca *ComputeAgent) getLatestAMI(ctx context.Context, task *Task) (*Task, er
 	default:
 		toolType = "get-latest-amazon-linux-ami"
 	}
-	
+
 	// Use AMI tool to get latest AMI
 	tool, exists := ca.amiTools[toolType]
 	if !exists {
@@ -1026,7 +1049,7 @@ func (ca *ComputeAgent) getLatestAMI(ctx context.Context, task *Task) (*Task, er
 		task.Error = fmt.Sprintf("AMI tool %s not available", toolType)
 		return task, fmt.Errorf("AMI tool %s not available", toolType)
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{})
 	if err != nil {
@@ -1034,30 +1057,34 @@ func (ca *ComputeAgent) getLatestAMI(ctx context.Context, task *Task) (*Task, er
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to get latest AMI: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
+	var amiOut interface{}
+	if len(result.Content) > 0 {
+		amiOut = result.Content[0]
+	}
 	task.Result = map[string]interface{}{
-		"ami_id":  result.Content[0].Text,
+		"ami_id":  amiOut,
 		"os_type": osType,
 		"status":  "retrieved",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
 		"task_id": task.ID,
-		"ami_id":  result.Content[0].Text,
+		"ami_id":  amiOut,
 		"os_type": osType,
 	}).Info("Latest AMI retrieved successfully")
-	
+
 	return task, nil
 }
 
 // getAvailabilityZones gets available availability zones
 func (ca *ComputeAgent) getAvailabilityZones(ctx context.Context, task *Task) (*Task, error) {
 	ca.logger.WithField("task_id", task.ID).Info("Getting availability zones")
-	
+
 	// Use zone tool to get availability zones
 	tool, exists := ca.zoneTools["get-availability-zones"]
 	if !exists {
@@ -1065,7 +1092,7 @@ func (ca *ComputeAgent) getAvailabilityZones(ctx context.Context, task *Task) (*
 		task.Error = "Availability zone tool not available"
 		return task, fmt.Errorf("availability zone tool not available")
 	}
-	
+
 	// Execute tool
 	result, err := tool.Execute(ctx, map[string]interface{}{})
 	if err != nil {
@@ -1073,20 +1100,24 @@ func (ca *ComputeAgent) getAvailabilityZones(ctx context.Context, task *Task) (*
 		task.Error = err.Error()
 		return task, fmt.Errorf("failed to get availability zones: %w", err)
 	}
-	
+
 	// Update task status
 	task.Status = TaskStatusCompleted
 	now := time.Now()
 	task.CompletedAt = &now
+	var azOut interface{}
+	if len(result.Content) > 0 {
+		azOut = result.Content[0]
+	}
 	task.Result = map[string]interface{}{
-		"availability_zones": result.Content[0].Text,
+		"availability_zones": azOut,
 		"status":             "retrieved",
 	}
-	
+
 	ca.logger.WithFields(map[string]interface{}{
 		"task_id": task.ID,
 	}).Info("Availability zones retrieved successfully")
-	
+
 	return task, nil
 }
 
@@ -1099,10 +1130,10 @@ func (ca *ComputeAgent) requestNetworkInfoFromNetwork(networkAgent SpecializedAg
 	// This would typically involve sending a message requesting network information
 	// For now, we'll log the coordination
 	ca.logger.WithFields(map[string]interface{}{
-		"agent_id":       ca.id,
-		"network_agent":  networkAgent.GetInfo().ID,
+		"agent_id":      ca.id,
+		"network_agent": networkAgent.GetInfo().ID,
 	}).Info("Requesting network information from network agent")
-	
+
 	return nil
 }
 
@@ -1114,6 +1145,6 @@ func (ca *ComputeAgent) requestSecurityInfoFromSecurity(securityAgent Specialize
 		"agent_id":       ca.id,
 		"security_agent": securityAgent.GetInfo().ID,
 	}).Info("Requesting security information from security agent")
-	
+
 	return nil
 }

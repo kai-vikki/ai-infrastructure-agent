@@ -58,7 +58,7 @@ type SystemMetrics struct {
 // NewMultiAgentSystem creates a new multi-agent system
 func NewMultiAgentSystem(config *config.Config, awsClient *aws.Client, logger *logging.Logger) (*MultiAgentSystem, error) {
 	// Initialize state manager
-	stateManager := masMakeStateManager(config, logger)
+    stateManager := masMakeStateManager(config, logger)
 
 	// Initialize multi-agent components
 	agentFactory := NewAgentFactory(config, logger)
@@ -86,7 +86,8 @@ func NewMultiAgentSystem(config *config.Config, awsClient *aws.Client, logger *l
 
 // masMakeStateManager provides a minimal state manager placeholder to satisfy interfaces.StateManager
 func masMakeStateManager(cfg *config.Config, logger *logging.Logger) interfaces.StateManager {
-	return nil
+    // Use an in-memory state manager to satisfy dependencies by default
+    return NewInMemoryStateManager()
 }
 
 // MessageHandlerFunc is an adapter to allow the use of

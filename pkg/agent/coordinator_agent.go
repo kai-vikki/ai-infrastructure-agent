@@ -13,6 +13,7 @@ import (
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/interfaces"
+    "github.com/versus-control/ai-infrastructure-agent/pkg/types"
 )
 
 // =============================================================================
@@ -131,6 +132,212 @@ func (ca *CoordinatorAgent) GetCapabilities() []AgentCapability {
 func (ca *CoordinatorAgent) GetSpecializedTools() []interfaces.MCPTool {
 	// Coordinator doesn't have specialized tools, it orchestrates other agents
 	return []interfaces.MCPTool{}
+}
+
+// =============================================================================
+// CoordinatorAgentInterface implementation
+// =============================================================================
+
+// RegisterAgent registers a specialized agent with the coordinator
+func (ca *CoordinatorAgent) RegisterAgent(agent SpecializedAgentInterface) error {
+    if agent == nil {
+        return fmt.Errorf("agent cannot be nil")
+    }
+    if ca.agentRegistry == nil {
+        return fmt.Errorf("agent registry is not available")
+    }
+    // Idempotent register: if already exists, treat as success
+    if existing, ok := ca.agentRegistry.GetAgent(agent.GetInfo().ID); ok && existing != nil {
+        return nil
+    }
+    if err := ca.agentRegistry.RegisterAgent(agent); err != nil {
+        // If registry returns already registered, swallow as success
+        if strings.Contains(err.Error(), "already registered") {
+            return nil
+        }
+        return err
+    }
+    // Record capabilities by type for quick lookup
+    ca.mu.Lock()
+    ca.agentCapabilities[agent.GetAgentType()] = agent.GetCapabilities()
+    ca.mu.Unlock()
+    return nil
+}
+
+// UnregisterAgent removes an agent from the registry
+func (ca *CoordinatorAgent) UnregisterAgent(agentID string) error {
+    if ca.agentRegistry == nil {
+        return fmt.Errorf("agent registry is not available")
+    }
+    return ca.agentRegistry.UnregisterAgent(agentID)
+}
+
+// GetRegisteredAgents returns all registered specialized agents
+func (ca *CoordinatorAgent) GetRegisteredAgents() map[string]SpecializedAgentInterface {
+    if ca.agentRegistry == nil {
+        return map[string]SpecializedAgentInterface{}
+    }
+    return ca.agentRegistry.GetAllAgents()
+}
+
+// GetAgentByType returns agents matching a given type
+func (ca *CoordinatorAgent) GetAgentByType(agentType AgentType) []SpecializedAgentInterface {
+    if ca.agentRegistry == nil {
+        return []SpecializedAgentInterface{}
+    }
+    return ca.agentRegistry.FindAgentsByType(agentType)
+}
+
+// DecomposeRequest breaks a natural-language request into tasks using LLM
+func (ca *CoordinatorAgent) DecomposeRequest(request string) ([]*Task, error) {
+    ctx := context.Background()
+    items, err := ca.decomposeWithLLM(ctx, request)
+    if err != nil {
+        return nil, err
+    }
+    tasks := make([]*Task, 0, len(items))
+    for _, item := range items {
+        t := &Task{
+            ID:         uuid.New().String(),
+            Type:       stringValue(item["type"]),
+            Parameters: mapValue(item["parameters"]),
+            Priority:   intValue(item["priority"]),
+            Status:     TaskStatusPending,
+            CreatedAt:  time.Now(),
+        }
+        // required agent type if provided
+        if at := stringValue(item["agent_type"]); at != "" {
+            t.RequiredAgent = AgentType(strings.ToLower(at))
+        }
+        // dependencies if provided
+        if deps, ok := item["dependencies"].([]interface{}); ok {
+            for _, d := range deps {
+                if s, ok := d.(string); ok {
+                    t.Dependencies = append(t.Dependencies, s)
+                }
+            }
+        }
+        tasks = append(tasks, t)
+    }
+    return tasks, nil
+}
+
+// AssignTask assigns a task to a suitable agent and enqueues it
+func (ca *CoordinatorAgent) AssignTask(task *Task) error {
+    if task == nil {
+        return fmt.Errorf("task cannot be nil")
+    }
+    ca.mu.Lock()
+    ca.activeTasks[task.ID] = task
+    ca.mu.Unlock()
+    // For a minimal implementation, just enqueue to coordinator queue
+    select {
+    case ca.taskQueue <- task:
+        task.Status = TaskStatusAssigned
+        return nil
+    default:
+        return fmt.Errorf("task queue is full")
+    }
+}
+
+// GetTaskStatus returns the task by ID if known
+func (ca *CoordinatorAgent) GetTaskStatus(taskID string) (*Task, error) {
+    ca.mu.RLock()
+    if t, ok := ca.activeTasks[taskID]; ok {
+        ca.mu.RUnlock()
+        return t, nil
+    }
+    if t, ok := ca.completedTasks[taskID]; ok {
+        ca.mu.RUnlock()
+        return t, nil
+    }
+    if t, ok := ca.failedTasks[taskID]; ok {
+        ca.mu.RUnlock()
+        return t, nil
+    }
+    ca.mu.RUnlock()
+    return nil, fmt.Errorf("task not found: %s", taskID)
+}
+
+// GetAllTasks returns all known tasks
+func (ca *CoordinatorAgent) GetAllTasks() []*Task {
+    ca.mu.RLock()
+    defer ca.mu.RUnlock()
+    tasks := make([]*Task, 0, len(ca.activeTasks)+len(ca.completedTasks)+len(ca.failedTasks))
+    for _, t := range ca.activeTasks { tasks = append(tasks, t) }
+    for _, t := range ca.completedTasks { tasks = append(tasks, t) }
+    for _, t := range ca.failedTasks { tasks = append(tasks, t) }
+    return tasks
+}
+
+// OrchestrateExecution builds a decision and a simple execution plan
+func (ca *CoordinatorAgent) OrchestrateExecution(tasks []*Task) (*types.AgentDecision, error) {
+    ctx := context.Background()
+    plan, err := ca.orchestrationEngine.createExecutionPlan(ctx, tasks)
+    if err != nil {
+        return nil, err
+    }
+    // Convert ExecutionPlan to AgentDecision with ExecutionPlanSteps
+    steps := make([]*types.ExecutionPlanStep, 0, len(plan.Tasks))
+    for _, ec := range plan.Tasks {
+        steps = append(steps, &types.ExecutionPlanStep{
+            ID:          ec.TaskID,
+            Name:        ec.TaskID,
+            Description: "Auto-generated execution step",
+            Action:      stringValue(ec.Parameters["action"]),
+            ResourceID:  stringValue(ec.Parameters["resourceId"]),
+            Parameters:  ec.Parameters,
+            DependsOn:   ec.Dependencies,
+            Status:      "pending",
+        })
+    }
+    decision := &types.AgentDecision{
+        ID:         uuid.New().String(),
+        Action:     "execute_plan",
+        Resource:   "multi-resource",
+        Reasoning:  "Generated by coordinator orchestration engine",
+        Confidence: 0.7,
+        Parameters: map[string]interface{}{"taskCount": len(tasks)},
+        ExecutionPlan: steps,
+        Timestamp:  time.Now(),
+    }
+    return decision, nil
+}
+
+// CoordinateExecution triggers execution via the orchestration engine
+func (ca *CoordinatorAgent) CoordinateExecution(tasks []*Task) error {
+    ctx := context.Background()
+    _, err := ca.orchestrationEngine.ExecuteTasks(ctx, tasks)
+    return err
+}
+
+// HandleTaskCompletion moves a task to completed/failed maps
+func (ca *CoordinatorAgent) HandleTaskCompletion(task *Task) error {
+    if task == nil { return fmt.Errorf("task cannot be nil") }
+    ca.mu.Lock()
+    delete(ca.activeTasks, task.ID)
+    if task.Status == TaskStatusCompleted {
+        ca.completedTasks[task.ID] = task
+    } else if task.Status == TaskStatusFailed {
+        ca.failedTasks[task.ID] = task
+    }
+    ca.mu.Unlock()
+    return nil
+}
+
+// helpers for safe type extraction
+func stringValue(v interface{}) string {
+    if s, ok := v.(string); ok { return s }
+    return ""
+}
+func intValue(v interface{}) int {
+    if i, ok := v.(int); ok { return i }
+    if f, ok := v.(float64); ok { return int(f) }
+    return 0
+}
+func mapValue(v interface{}) map[string]interface{} {
+    if m, ok := v.(map[string]interface{}); ok { return m }
+    return map[string]interface{}{}
 }
 
 // ProcessTask processes a coordination-related task

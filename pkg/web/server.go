@@ -70,6 +70,23 @@ func NewWebServer(cfg *config.Config, awsClient *aws.Client, logger *logging.Log
 	ws.setupRoutes()
 	ws.loadTemplates()
 
+	// -----------------------------------------------------------------
+	// Mount Multi-Agent System Web Integration routes under /api/multi-agent
+	// -----------------------------------------------------------------
+	// Create and initialize the MultiAgentSystem, then attach its web API
+	if mas, err := agent.NewMultiAgentSystem(cfg, awsClient, logger); err == nil {
+		if initErr := mas.Initialize(context.Background()); initErr == nil {
+			mi := agent.NewWebIntegration(mas, logger)
+			// Delegate all /api/multi-agent* requests to the integration router
+			ws.router.PathPrefix("/api/multi-agent").Handler(mi.GetRouter())
+			logger.Info("Multi-Agent WebIntegration routes mounted at /api/multi-agent")
+		} else {
+			logger.WithError(initErr).Warn("Failed to initialize MultiAgentSystem; multi-agent APIs disabled")
+		}
+	} else {
+		logger.WithError(err).Warn("Failed to create MultiAgentSystem; multi-agent APIs disabled")
+	}
+
 	return ws
 }
 

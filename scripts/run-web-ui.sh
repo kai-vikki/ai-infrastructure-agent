@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # AI Infrastructure Agent Web UI Launch Script
 
 echo "🚀 Building AI Infrastructure Agent Web UI..."

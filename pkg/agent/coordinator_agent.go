@@ -13,7 +13,7 @@ import (
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/aws"
 	"github.com/versus-control/ai-infrastructure-agent/pkg/interfaces"
-    "github.com/versus-control/ai-infrastructure-agent/pkg/types"
+	"github.com/versus-control/ai-infrastructure-agent/pkg/types"
 )
 
 // =============================================================================
@@ -140,204 +140,267 @@ func (ca *CoordinatorAgent) GetSpecializedTools() []interfaces.MCPTool {
 
 // RegisterAgent registers a specialized agent with the coordinator
 func (ca *CoordinatorAgent) RegisterAgent(agent SpecializedAgentInterface) error {
-    if agent == nil {
-        return fmt.Errorf("agent cannot be nil")
-    }
-    if ca.agentRegistry == nil {
-        return fmt.Errorf("agent registry is not available")
-    }
-    // Idempotent register: if already exists, treat as success
-    if existing, ok := ca.agentRegistry.GetAgent(agent.GetInfo().ID); ok && existing != nil {
-        return nil
-    }
-    if err := ca.agentRegistry.RegisterAgent(agent); err != nil {
-        // If registry returns already registered, swallow as success
-        if strings.Contains(err.Error(), "already registered") {
-            return nil
-        }
-        return err
-    }
-    // Record capabilities by type for quick lookup
-    ca.mu.Lock()
-    ca.agentCapabilities[agent.GetAgentType()] = agent.GetCapabilities()
-    ca.mu.Unlock()
-    return nil
+	if agent == nil {
+		return fmt.Errorf("agent cannot be nil")
+	}
+	if ca.agentRegistry == nil {
+		return fmt.Errorf("agent registry is not available")
+	}
+	// Idempotent register: if already exists, treat as success
+	if existing, ok := ca.agentRegistry.GetAgent(agent.GetInfo().ID); ok && existing != nil {
+		return nil
+	}
+	if err := ca.agentRegistry.RegisterAgent(agent); err != nil {
+		// If registry returns already registered, swallow as success
+		if strings.Contains(err.Error(), "already registered") {
+			return nil
+		}
+		return err
+	}
+	// Record capabilities by type for quick lookup
+	ca.mu.Lock()
+	ca.agentCapabilities[agent.GetAgentType()] = agent.GetCapabilities()
+	ca.mu.Unlock()
+	return nil
 }
 
 // UnregisterAgent removes an agent from the registry
 func (ca *CoordinatorAgent) UnregisterAgent(agentID string) error {
-    if ca.agentRegistry == nil {
-        return fmt.Errorf("agent registry is not available")
-    }
-    return ca.agentRegistry.UnregisterAgent(agentID)
+	if ca.agentRegistry == nil {
+		return fmt.Errorf("agent registry is not available")
+	}
+	return ca.agentRegistry.UnregisterAgent(agentID)
 }
 
 // GetRegisteredAgents returns all registered specialized agents
 func (ca *CoordinatorAgent) GetRegisteredAgents() map[string]SpecializedAgentInterface {
-    if ca.agentRegistry == nil {
-        return map[string]SpecializedAgentInterface{}
-    }
-    return ca.agentRegistry.GetAllAgents()
+	if ca.agentRegistry == nil {
+		return map[string]SpecializedAgentInterface{}
+	}
+	return ca.agentRegistry.GetAllAgents()
 }
 
 // GetAgentByType returns agents matching a given type
 func (ca *CoordinatorAgent) GetAgentByType(agentType AgentType) []SpecializedAgentInterface {
-    if ca.agentRegistry == nil {
-        return []SpecializedAgentInterface{}
-    }
-    return ca.agentRegistry.FindAgentsByType(agentType)
+	if ca.agentRegistry == nil {
+		return []SpecializedAgentInterface{}
+	}
+	return ca.agentRegistry.FindAgentsByType(agentType)
 }
 
 // DecomposeRequest breaks a natural-language request into tasks using LLM
 func (ca *CoordinatorAgent) DecomposeRequest(request string) ([]*Task, error) {
-    ctx := context.Background()
-    items, err := ca.decomposeWithLLM(ctx, request)
-    if err != nil {
-        return nil, err
-    }
-    tasks := make([]*Task, 0, len(items))
-    for _, item := range items {
-        t := &Task{
-            ID:         uuid.New().String(),
-            Type:       stringValue(item["type"]),
-            Parameters: mapValue(item["parameters"]),
-            Priority:   intValue(item["priority"]),
-            Status:     TaskStatusPending,
-            CreatedAt:  time.Now(),
-        }
-        // required agent type if provided
-        if at := stringValue(item["agent_type"]); at != "" {
-            t.RequiredAgent = AgentType(strings.ToLower(at))
-        }
-        // dependencies if provided
-        if deps, ok := item["dependencies"].([]interface{}); ok {
-            for _, d := range deps {
-                if s, ok := d.(string); ok {
-                    t.Dependencies = append(t.Dependencies, s)
-                }
-            }
-        }
-        tasks = append(tasks, t)
-    }
-    return tasks, nil
+	ctx := context.Background()
+	items, err := ca.decomposeWithLLM(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	tasks := make([]*Task, 0, len(items))
+	for _, item := range items {
+		t := &Task{
+			ID:         uuid.New().String(),
+			Type:       stringValue(item["type"]),
+			Parameters: mapValue(item["parameters"]),
+			Priority:   intValue(item["priority"]),
+			Status:     TaskStatusPending,
+			CreatedAt:  time.Now(),
+		}
+		// required agent type if provided
+		if at := stringValue(item["agent_type"]); at != "" {
+			t.RequiredAgent = AgentType(strings.ToLower(at))
+		}
+		// dependencies if provided
+		if deps, ok := item["dependencies"].([]interface{}); ok {
+			for _, d := range deps {
+				if s, ok := d.(string); ok {
+					t.Dependencies = append(t.Dependencies, s)
+				}
+			}
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
 }
 
 // AssignTask assigns a task to a suitable agent and enqueues it
 func (ca *CoordinatorAgent) AssignTask(task *Task) error {
-    if task == nil {
-        return fmt.Errorf("task cannot be nil")
-    }
-    ca.mu.Lock()
-    ca.activeTasks[task.ID] = task
-    ca.mu.Unlock()
-    // For a minimal implementation, just enqueue to coordinator queue
-    select {
-    case ca.taskQueue <- task:
-        task.Status = TaskStatusAssigned
-        return nil
-    default:
-        return fmt.Errorf("task queue is full")
-    }
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+	ca.mu.Lock()
+	ca.activeTasks[task.ID] = task
+	ca.mu.Unlock()
+	// For a minimal implementation, just enqueue to coordinator queue
+	select {
+	case ca.taskQueue <- task:
+		task.Status = TaskStatusAssigned
+		return nil
+	default:
+		return fmt.Errorf("task queue is full")
+	}
 }
 
 // GetTaskStatus returns the task by ID if known
 func (ca *CoordinatorAgent) GetTaskStatus(taskID string) (*Task, error) {
-    ca.mu.RLock()
-    if t, ok := ca.activeTasks[taskID]; ok {
-        ca.mu.RUnlock()
-        return t, nil
-    }
-    if t, ok := ca.completedTasks[taskID]; ok {
-        ca.mu.RUnlock()
-        return t, nil
-    }
-    if t, ok := ca.failedTasks[taskID]; ok {
-        ca.mu.RUnlock()
-        return t, nil
-    }
-    ca.mu.RUnlock()
-    return nil, fmt.Errorf("task not found: %s", taskID)
+	ca.mu.RLock()
+	if t, ok := ca.activeTasks[taskID]; ok {
+		ca.mu.RUnlock()
+		return t, nil
+	}
+	if t, ok := ca.completedTasks[taskID]; ok {
+		ca.mu.RUnlock()
+		return t, nil
+	}
+	if t, ok := ca.failedTasks[taskID]; ok {
+		ca.mu.RUnlock()
+		return t, nil
+	}
+	ca.mu.RUnlock()
+	return nil, fmt.Errorf("task not found: %s", taskID)
 }
 
 // GetAllTasks returns all known tasks
 func (ca *CoordinatorAgent) GetAllTasks() []*Task {
-    ca.mu.RLock()
-    defer ca.mu.RUnlock()
-    tasks := make([]*Task, 0, len(ca.activeTasks)+len(ca.completedTasks)+len(ca.failedTasks))
-    for _, t := range ca.activeTasks { tasks = append(tasks, t) }
-    for _, t := range ca.completedTasks { tasks = append(tasks, t) }
-    for _, t := range ca.failedTasks { tasks = append(tasks, t) }
-    return tasks
+	ca.mu.RLock()
+	defer ca.mu.RUnlock()
+	tasks := make([]*Task, 0, len(ca.activeTasks)+len(ca.completedTasks)+len(ca.failedTasks))
+	for _, t := range ca.activeTasks {
+		tasks = append(tasks, t)
+	}
+	for _, t := range ca.completedTasks {
+		tasks = append(tasks, t)
+	}
+	for _, t := range ca.failedTasks {
+		tasks = append(tasks, t)
+	}
+	return tasks
 }
 
-// OrchestrateExecution builds a decision and a simple execution plan
+// OrchestrateExecution builds a decision and executes the plan
 func (ca *CoordinatorAgent) OrchestrateExecution(tasks []*Task) (*types.AgentDecision, error) {
-    ctx := context.Background()
-    plan, err := ca.orchestrationEngine.createExecutionPlan(ctx, tasks)
-    if err != nil {
-        return nil, err
-    }
-    // Convert ExecutionPlan to AgentDecision with ExecutionPlanSteps
-    steps := make([]*types.ExecutionPlanStep, 0, len(plan.Tasks))
-    for _, ec := range plan.Tasks {
-        steps = append(steps, &types.ExecutionPlanStep{
-            ID:          ec.TaskID,
-            Name:        ec.TaskID,
-            Description: "Auto-generated execution step",
-            Action:      stringValue(ec.Parameters["action"]),
-            ResourceID:  stringValue(ec.Parameters["resourceId"]),
-            Parameters:  ec.Parameters,
-            DependsOn:   ec.Dependencies,
-            Status:      "pending",
-        })
-    }
-    decision := &types.AgentDecision{
-        ID:         uuid.New().String(),
-        Action:     "execute_plan",
-        Resource:   "multi-resource",
-        Reasoning:  "Generated by coordinator orchestration engine",
-        Confidence: 0.7,
-        Parameters: map[string]interface{}{"taskCount": len(tasks)},
-        ExecutionPlan: steps,
-        Timestamp:  time.Now(),
-    }
-    return decision, nil
+	ctx := context.Background()
+	// Ensure orchestration engine is initialized (defensive)
+	if ca.orchestrationEngine == nil {
+		ca.initializeOrchestrationEngine()
+	}
+
+	// Create execution plan
+	plan, err := ca.orchestrationEngine.createExecutionPlan(ctx, tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert ExecutionPlan to AgentDecision with ExecutionPlanSteps
+	steps := make([]*types.ExecutionPlanStep, 0, len(plan.Tasks))
+	for _, ec := range plan.Tasks {
+		steps = append(steps, &types.ExecutionPlanStep{
+			ID:          ec.TaskID,
+			Name:        ec.TaskID,
+			Description: "Auto-generated execution step",
+			Action:      stringValue(ec.Parameters["action"]),
+			ResourceID:  stringValue(ec.Parameters["resourceId"]),
+			Parameters:  ec.Parameters,
+			DependsOn:   ec.Dependencies,
+			Status:      "pending",
+		})
+	}
+
+	// Execute the tasks
+	ca.logger.WithField("task_count", len(tasks)).Info("Starting task execution orchestration")
+	results, err := ca.orchestrationEngine.ExecuteTasks(ctx, tasks)
+	if err != nil {
+		ca.logger.WithError(err).Error("Task execution failed")
+		// Still return decision but with error status
+		decision := &types.AgentDecision{
+			ID:         uuid.New().String(),
+			Action:     "execute_plan",
+			Resource:   "multi-resource",
+			Reasoning:  "Generated by coordinator orchestration engine",
+			Confidence: 0.3, // Lower confidence due to execution failure
+			Parameters: map[string]interface{}{
+				"taskCount":      len(tasks),
+				"executionError": err.Error(),
+			},
+			ExecutionPlan: steps,
+			Timestamp:     time.Now(),
+		}
+		return decision, nil
+	}
+
+	// Update step statuses based on results
+	for i, step := range steps {
+		if i < len(results) {
+			step.Status = "completed"
+		}
+	}
+
+	decision := &types.AgentDecision{
+		ID:         uuid.New().String(),
+		Action:     "execute_plan",
+		Resource:   "multi-resource",
+		Reasoning:  "Generated by coordinator orchestration engine and executed successfully",
+		Confidence: 0.9, // High confidence due to successful execution
+		Parameters: map[string]interface{}{
+			"taskCount":        len(tasks),
+			"executionResults": results,
+		},
+		ExecutionPlan: steps,
+		Timestamp:     time.Now(),
+	}
+
+	ca.logger.WithFields(map[string]interface{}{
+		"decision_id":   decision.ID,
+		"task_count":    len(tasks),
+		"results_count": len(results),
+	}).Info("Task orchestration completed successfully")
+
+	return decision, nil
 }
 
 // CoordinateExecution triggers execution via the orchestration engine
 func (ca *CoordinatorAgent) CoordinateExecution(tasks []*Task) error {
-    ctx := context.Background()
-    _, err := ca.orchestrationEngine.ExecuteTasks(ctx, tasks)
-    return err
+	ctx := context.Background()
+	_, err := ca.orchestrationEngine.ExecuteTasks(ctx, tasks)
+	return err
 }
 
 // HandleTaskCompletion moves a task to completed/failed maps
 func (ca *CoordinatorAgent) HandleTaskCompletion(task *Task) error {
-    if task == nil { return fmt.Errorf("task cannot be nil") }
-    ca.mu.Lock()
-    delete(ca.activeTasks, task.ID)
-    if task.Status == TaskStatusCompleted {
-        ca.completedTasks[task.ID] = task
-    } else if task.Status == TaskStatusFailed {
-        ca.failedTasks[task.ID] = task
-    }
-    ca.mu.Unlock()
-    return nil
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+	ca.mu.Lock()
+	delete(ca.activeTasks, task.ID)
+	if task.Status == TaskStatusCompleted {
+		ca.completedTasks[task.ID] = task
+	} else if task.Status == TaskStatusFailed {
+		ca.failedTasks[task.ID] = task
+	}
+	ca.mu.Unlock()
+	return nil
 }
 
 // helpers for safe type extraction
 func stringValue(v interface{}) string {
-    if s, ok := v.(string); ok { return s }
-    return ""
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
 }
 func intValue(v interface{}) int {
-    if i, ok := v.(int); ok { return i }
-    if f, ok := v.(float64); ok { return int(f) }
-    return 0
+	if i, ok := v.(int); ok {
+		return i
+	}
+	if f, ok := v.(float64); ok {
+		return int(f)
+	}
+	return 0
 }
 func mapValue(v interface{}) map[string]interface{} {
-    if m, ok := v.(map[string]interface{}); ok { return m }
-    return map[string]interface{}{}
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
+	}
+	return map[string]interface{}{}
 }
 
 // ProcessTask processes a coordination-related task
@@ -715,6 +778,10 @@ func (ca *CoordinatorAgent) makeIntelligentDecision(ctx context.Context, task *T
 
 // decomposeWithLLM uses LLM to decompose a natural language request
 func (ca *CoordinatorAgent) decomposeWithLLM(ctx context.Context, request string) ([]map[string]interface{}, error) {
+	// If no LLM is configured, use a deterministic fallback decomposition
+	if ca.llm == nil {
+		return ca.fallbackDecomposition(request), nil
+	}
 	prompt := fmt.Sprintf(`
 You are an AI infrastructure coordinator. Decompose the following request into specific, actionable tasks that can be executed by specialized agents.
 
@@ -760,16 +827,244 @@ Return only the JSON array, no additional text.
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to call LLM: %w", err)
+		// Graceful fallback if LLM call fails
+		ca.logger.WithError(err).Warn("LLM call failed during decomposition; using fallback plan")
+		return ca.fallbackDecomposition(request), nil
 	}
 
 	// Parse LLM response
 	var tasks []map[string]interface{}
-	if err := json.Unmarshal([]byte(response.Choices[0].Content), &tasks); err != nil {
-		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
+	// Defensive checks on response structure
+	if len(response.Choices) == 0 || len(strings.TrimSpace(response.Choices[0].Content)) == 0 {
+		ca.logger.Warn("LLM returned empty response; using fallback plan")
+		return ca.fallbackDecomposition(request), nil
+	}
+	cleaned, perr := extractJSONContent(response.Choices[0].Content, true)
+	if perr != nil {
+		ca.logger.WithError(perr).Warn("Failed to normalize LLM response; using fallback plan")
+		return ca.fallbackDecomposition(request), nil
+	}
+	if err := json.Unmarshal([]byte(cleaned), &tasks); err != nil {
+		ca.logger.WithError(err).Warn("Failed to parse LLM response; using fallback plan")
+		return ca.fallbackDecomposition(request), nil
 	}
 
 	return tasks, nil
+}
+
+// fallbackDecomposition provides a simple rule-based breakdown when LLM is unavailable
+func (ca *CoordinatorAgent) fallbackDecomposition(request string) []map[string]interface{} {
+	req := strings.ToLower(request)
+	tasks := make([]map[string]interface{}, 0)
+
+	// S3 bucket creation intent
+	if containsAny(req, []string{"s3", "bucket", "tạo s3", "tạo bucket", "create s3", "create bucket"}) {
+		bucketName := parseBucketName(request)
+		region := parseRegion(req)
+		versioning := strings.Contains(req, "versioning") || strings.Contains(req, "bật versioning")
+		blockPublic := strings.Contains(req, "block public access") || strings.Contains(req, "chặn public") || strings.Contains(req, "block public")
+
+		tasks = append(tasks, map[string]interface{}{
+			"type":       "create_s3_bucket",
+			"agent_type": "Storage",
+			"parameters": map[string]interface{}{
+				"bucketName":        bucketName,
+				"region":            region,
+				"versioning":        versioning,
+				"blockPublicAccess": blockPublic,
+			},
+			"dependencies": []string{},
+			"priority":     4,
+		})
+	}
+
+	// Heuristics for common infra intents
+	if strings.Contains(req, "vpc") || strings.Contains(req, "10.") {
+		tasks = append(tasks, map[string]interface{}{
+			"type":       "create_vpc",
+			"agent_type": "Network",
+			"parameters": map[string]interface{}{
+				"cidrBlock": firstMatch(req, []string{"10.0.0.0/16", "10.1.0.0/16", "10.2.0.0/16"}),
+				"name":      "auto-vpc",
+			},
+			"dependencies": []string{},
+			"priority":     5,
+		})
+	}
+
+	if strings.Contains(req, "subnet") || strings.Contains(req, "public") || strings.Contains(req, "private") {
+		// Public subnet
+		tasks = append(tasks, map[string]interface{}{
+			"type":       "create_subnet",
+			"agent_type": "Network",
+			"parameters": map[string]interface{}{
+				"name":      "public-subnet-a",
+				"cidrBlock": "10.0.1.0/24",
+				"public":    true,
+			},
+			"dependencies": []string{"create_vpc"},
+			"priority":     4,
+		})
+		// Private subnet
+		tasks = append(tasks, map[string]interface{}{
+			"type":       "create_subnet",
+			"agent_type": "Network",
+			"parameters": map[string]interface{}{
+				"name":      "private-subnet-a",
+				"cidrBlock": "10.0.2.0/24",
+				"public":    false,
+			},
+			"dependencies": []string{"create_vpc"},
+			"priority":     4,
+		})
+	}
+
+	if strings.Contains(req, "nat") {
+		tasks = append(tasks, map[string]interface{}{
+			"type":         "create_nat_gateway",
+			"agent_type":   "Network",
+			"parameters":   map[string]interface{}{"name": "nat-gw"},
+			"dependencies": []string{"create_subnet"},
+			"priority":     4,
+		})
+	}
+
+	if strings.Contains(req, "ec2") || strings.Contains(req, "instance") {
+		tasks = append(tasks, map[string]interface{}{
+			"type":       "create_ec2_instance",
+			"agent_type": "Compute",
+			"parameters": map[string]interface{}{
+				"instanceType": "t2.micro",
+				"name":         "app-instance",
+			},
+			"dependencies": []string{"create_subnet"},
+			"priority":     3,
+		})
+	}
+
+	if len(tasks) == 0 {
+		// Generic placeholder if nothing matched
+		tasks = append(tasks, map[string]interface{}{
+			"type":         "analyze_requirements",
+			"agent_type":   "Coordinator",
+			"parameters":   map[string]interface{}{"request": request},
+			"dependencies": []string{},
+			"priority":     3,
+		})
+	}
+
+	return tasks
+}
+
+// firstMatch returns the first candidate contained in text, else a default CIDR
+func firstMatch(text string, candidates []string) string {
+	for _, c := range candidates {
+		if strings.Contains(text, strings.ToLower(c)) || strings.Contains(text, c) {
+			return c
+		}
+	}
+	return "10.0.0.0/16"
+}
+
+// containsAny checks if any of the keywords appear in text
+func containsAny(text string, keywords []string) bool {
+	for _, k := range keywords {
+		if strings.Contains(text, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseBucketName tries to extract a bucket name after Vietnamese "tên" or common patterns
+func parseBucketName(original string) string {
+	lower := strings.ToLower(original)
+	// Look for "tên <name>" pattern
+	if idx := strings.Index(lower, "tên "); idx >= 0 {
+		rest := strings.TrimSpace(original[idx+len("tên "):])
+		// stop at whitespace or punctuation
+		for i, r := range rest {
+			if r == ' ' || r == ',' || r == ';' || r == '\n' {
+				return sanitizeBucketName(rest[:i])
+			}
+		}
+		return sanitizeBucketName(rest)
+	}
+	// Fallback: find token that looks like a bucket (letters, digits, hyphens)
+	tokens := strings.FieldsFunc(original, func(r rune) bool { return r == ' ' || r == ',' || r == ';' || r == '\n' })
+	for _, t := range tokens {
+		s := sanitizeBucketName(t)
+		if len(s) >= 3 && strings.IndexFunc(s, func(r rune) bool { return !(r == '-' || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')) }) == -1 {
+			return s
+		}
+	}
+	return "my-s3-bucket"
+}
+
+// parseRegion pulls out an aws region name if present, else defaults
+func parseRegion(lowerReq string) string {
+	// common regions to scan
+	regions := []string{"us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1", "ap-northeast-1"}
+	for _, r := range regions {
+		if strings.Contains(lowerReq, r) {
+			return r
+		}
+	}
+	return "us-west-2"
+}
+
+// sanitizeBucketName to meet s3 naming constraints subset (lowercase, digits, hyphens)
+func sanitizeBucketName(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.Trim(name, ".")
+	lower := strings.ToLower(name)
+	// Replace invalid chars with hyphen
+	b := make([]rune, 0, len(lower))
+	for _, r := range lower {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			b = append(b, r)
+		} else if r == '_' || r == ' ' {
+			b = append(b, '-')
+		}
+	}
+	s := string(b)
+	if len(s) < 3 {
+		s = s + "-bucket"
+	}
+	return s
+}
+
+// extractJSONContent extracts a JSON object/array from a response that may include
+// markdown code fences or explanatory text. If expectArray is true, prefer array.
+func extractJSONContent(raw string, expectArray bool) (string, error) {
+	s := strings.TrimSpace(raw)
+	// Strip code fences ```json ... ``` or ``` ... ```
+	if strings.HasPrefix(s, "```") {
+		// remove opening fence and optional language
+		s = strings.TrimPrefix(s, "```json")
+		s = strings.TrimPrefix(s, "```")
+		s = strings.TrimSpace(s)
+		// remove closing fence
+		if idx := strings.LastIndex(s, "```"); idx >= 0 {
+			s = strings.TrimSpace(s[:idx])
+		}
+	}
+	// Find JSON bounds
+	start, end := -1, -1
+	if expectArray {
+		if l, r := strings.Index(s, "["), strings.LastIndex(s, "]"); l >= 0 && r > l {
+			start, end = l, r
+		}
+	}
+	if start < 0 || end < 0 {
+		if l, r := strings.Index(s, "{"), strings.LastIndex(s, "}"); l >= 0 && r > l {
+			start, end = l, r
+		}
+	}
+	if start < 0 || end < 0 {
+		return "", fmt.Errorf("no JSON found in response")
+	}
+	return strings.TrimSpace(s[start : end+1]), nil
 }
 
 // makeDecisionWithLLM uses LLM to make intelligent decisions
@@ -973,12 +1268,51 @@ func (ts *TaskScheduler) executeTaskGroup(ctx context.Context, tasks []*Task) ([
 
 // findAgentForTask finds the appropriate agent for a task
 func (ts *TaskScheduler) findAgentForTask(task *Task) (SpecializedAgentInterface, error) {
-	// This is a simplified implementation
-	// In a real system, this would use the agent registry to find available agents
+	// Try by required agent type first
+	var desiredType AgentType
+	if task.RequiredAgent != "" {
+		desiredType = task.RequiredAgent
+	} else {
+		// Infer from task type
+		t := strings.ToLower(task.Type)
+		switch {
+		case strings.Contains(t, "vpc") || strings.Contains(t, "subnet") || strings.Contains(t, "route") || strings.Contains(t, "gateway"):
+			desiredType = AgentTypeNetwork
+		case strings.Contains(t, "ec2") || strings.Contains(t, "instance") || strings.Contains(t, "ami") || strings.Contains(t, "asg") || strings.Contains(t, "alb"):
+			desiredType = AgentTypeCompute
+		case strings.Contains(t, "rds") || strings.Contains(t, "ebs") || strings.Contains(t, "s3") || strings.Contains(t, "bucket") || strings.Contains(t, "snapshot"):
+			desiredType = AgentTypeStorage
+		case strings.Contains(t, "security") || strings.Contains(t, "iam") || strings.Contains(t, "kms") || strings.Contains(t, "policy"):
+			desiredType = AgentTypeSecurity
+		case strings.Contains(t, "monitor") || strings.Contains(t, "cloudwatch") || strings.Contains(t, "alarm") || strings.Contains(t, "metric"):
+			desiredType = AgentTypeMonitoring
+		case strings.Contains(t, "backup") || strings.Contains(t, "restore"):
+			desiredType = AgentTypeBackup
+		default:
+			// fallback to coordinator - although usually not executing cloud actions
+			desiredType = AgentTypeCoordinator
+		}
+	}
 
-	// For now, return nil as we don't have access to the agent registry here
-	// This would be implemented in the full system
-	return nil, fmt.Errorf("agent finding not implemented yet")
+	// Use the coordinator's registry to find an agent of desired type
+	agents := ts.coordinator.agentRegistry.FindAgentsByType(desiredType)
+	if len(agents) == 0 {
+		ts.logger.WithField("desired_type", desiredType).Warn("No agents found for type, trying coordinator fallback")
+		// Fallback to coordinator if no specialized agent available
+		coordinatorAgents := ts.coordinator.agentRegistry.FindAgentsByType(AgentTypeCoordinator)
+		if len(coordinatorAgents) > 0 {
+			return coordinatorAgents[0], nil
+		}
+		return nil, fmt.Errorf("no agent available for type %s", desiredType)
+	}
+	// Simple strategy: pick the first available/ready agent
+	for _, a := range agents {
+		if a.GetStatus() == AgentStatusReady {
+			return a, nil
+		}
+	}
+	// If none ready, return the first
+	return agents[0], nil
 }
 
 // executeTaskWithAgent executes a task with a specific agent
@@ -1175,10 +1509,14 @@ func (ra *ResultAggregator) Aggregate(ctx context.Context, results []interface{}
 	aggregated["successful_tasks"] = successCount
 	aggregated["failed_tasks"] = failureCount
 
-	// Generate summary
+	// Generate summary with safe division
+	successRate := 0.0
+	if len(results) > 0 {
+		successRate = float64(successCount) / float64(len(results))
+	}
 	summary := map[string]interface{}{
 		"overall_status": "completed",
-		"success_rate":   float64(successCount) / float64(len(results)),
+		"success_rate":   successRate,
 		"total_tasks":    len(results),
 	}
 	aggregated["summary"] = summary

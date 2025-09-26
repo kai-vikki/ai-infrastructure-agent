@@ -146,7 +146,19 @@ func (f *AgentFactoryImpl) createCoordinatorAgent(agentConfig *config.AgentConfi
 		failedTasks:       make(map[string]*Task),
 		taskDependencies:  make(map[string][]string),
 		agentCapabilities: make(map[AgentType][]AgentCapability),
+		logger:            dependencies.Logger,
+		awsClient:         dependencies.AWSClient,
 	}
+
+	// Initialize LLM for coordinator (enables AI-based decomposition/decision making)
+	if llm, err := initializeLLM(agentConfig, f.logger); err != nil {
+		f.logger.WithError(err).Warn("Coordinator LLM initialization failed; falling back to rule-based decomposition")
+	} else {
+		coordinator.llm = llm
+	}
+
+	// Ensure orchestration engine is ready
+	coordinator.initializeOrchestrationEngine()
 
 	// Initialize the coordinator
 	if err := coordinator.Initialize(context.Background()); err != nil {
@@ -164,11 +176,8 @@ func (f *AgentFactoryImpl) createNetworkAgent(agentConfig *config.AgentConfig, d
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create network agent
-	networkAgent := &NetworkAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create network agent using constructor
+	networkAgent := NewNetworkAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the network agent
 	if err := networkAgent.Initialize(context.Background()); err != nil {
@@ -186,11 +195,8 @@ func (f *AgentFactoryImpl) createComputeAgent(agentConfig *config.AgentConfig, d
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create compute agent
-	computeAgent := &ComputeAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create compute agent using constructor
+	computeAgent := NewComputeAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the compute agent
 	if err := computeAgent.Initialize(context.Background()); err != nil {
@@ -208,11 +214,8 @@ func (f *AgentFactoryImpl) createStorageAgent(agentConfig *config.AgentConfig, d
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create storage agent
-	storageAgent := &StorageAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create storage agent using constructor
+	storageAgent := NewStorageAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the storage agent
 	if err := storageAgent.Initialize(context.Background()); err != nil {
@@ -230,11 +233,8 @@ func (f *AgentFactoryImpl) createSecurityAgent(agentConfig *config.AgentConfig, 
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create security agent
-	securityAgent := &SecurityAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create security agent using constructor
+	securityAgent := NewSecurityAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the security agent
 	if err := securityAgent.Initialize(context.Background()); err != nil {
@@ -252,11 +252,8 @@ func (f *AgentFactoryImpl) createMonitoringAgent(agentConfig *config.AgentConfig
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create monitoring agent
-	monitoringAgent := &MonitoringAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create monitoring agent using constructor
+	monitoringAgent := NewMonitoringAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the monitoring agent
 	if err := monitoringAgent.Initialize(context.Background()); err != nil {
@@ -274,11 +271,8 @@ func (f *AgentFactoryImpl) createBackupAgent(agentConfig *config.AgentConfig, de
 		return nil, fmt.Errorf("failed to create base agent: %w", err)
 	}
 
-	// Create backup agent
-	backupAgent := &BackupAgent{
-		BaseAgent: baseAgent,
-		taskQueue: make(chan *Task, 50),
-	}
+	// Create backup agent using constructor
+	backupAgent := NewBackupAgent(baseAgent, dependencies.AWSClient, dependencies.Logger)
 
 	// Initialize the backup agent
 	if err := backupAgent.Initialize(context.Background()); err != nil {

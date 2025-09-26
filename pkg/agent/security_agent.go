@@ -149,6 +149,8 @@ func (sa *SecurityAgent) ProcessTask(ctx context.Context, task *Task) (*Task, er
 		return sa.createKMSKey(ctx, task)
 	case "create_secret":
 		return sa.createSecret(ctx, task)
+	case "create_secrets_manager_secret":
+		return sa.createSecret(ctx, task) // Alias for create_secret
 	case "get_secret":
 		return sa.getSecret(ctx, task)
 	default:
@@ -163,7 +165,7 @@ func (sa *SecurityAgent) CanHandleTask(task *Task) bool {
 	securityTaskTypes := []string{
 		"create_security_group", "add_security_group_ingress_rule", "add_security_group_egress_rule",
 		"create_iam_role", "create_iam_policy", "attach_iam_policy",
-		"create_kms_key", "create_secret", "get_secret", "update_secret",
+		"create_kms_key", "create_secret", "create_secrets_manager_secret", "get_secret", "update_secret",
 	}
 
 	for _, taskType := range securityTaskTypes {
@@ -946,7 +948,7 @@ func (sa *SecurityAgent) createSecret(ctx context.Context, task *Task) (*Task, e
 	}
 
 	secretValue := "default-secret-value"
-	if value, exists := task.Parameters["secretValue"]; exists {
+	if value, exists := task.Parameters["secretString"]; exists {
 		if valueStr, ok := value.(string); ok {
 			secretValue = valueStr
 		}

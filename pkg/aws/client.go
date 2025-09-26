@@ -10,17 +10,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
 	"github.com/versus-control/ai-infrastructure-agent/internal/logging"
 )
 
 type Client struct {
-	cfg         aws.Config
-	ec2         *ec2.Client
-	autoscaling *autoscaling.Client
-	elbv2       *elasticloadbalancingv2.Client
-	rds         *rds.Client
-	logger      *logging.Logger
+	cfg            aws.Config
+	ec2            *ec2.Client
+	autoscaling    *autoscaling.Client
+	elbv2          *elasticloadbalancingv2.Client
+	rds            *rds.Client
+	SecretsManager *secretsmanager.Client
+	logger         *logging.Logger
 }
 
 func NewClient(region string, logger *logging.Logger) (*Client, error) {
@@ -33,12 +35,13 @@ func NewClient(region string, logger *logging.Logger) (*Client, error) {
 	}
 
 	return &Client{
-		cfg:         cfg,
-		ec2:         ec2.NewFromConfig(cfg),
-		autoscaling: autoscaling.NewFromConfig(cfg),
-		elbv2:       elasticloadbalancingv2.NewFromConfig(cfg),
-		rds:         rds.NewFromConfig(cfg),
-		logger:      logger,
+		cfg:            cfg,
+		ec2:            ec2.NewFromConfig(cfg),
+		autoscaling:    autoscaling.NewFromConfig(cfg),
+		elbv2:          elasticloadbalancingv2.NewFromConfig(cfg),
+		rds:            rds.NewFromConfig(cfg),
+		SecretsManager: secretsmanager.NewFromConfig(cfg),
+		logger:         logger,
 	}, nil
 }
 

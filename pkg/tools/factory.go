@@ -164,6 +164,18 @@ func (f *ToolFactoryImpl) CreateTool(toolType string, dependencies interface{}) 
 	case "list-db-snapshots":
 		return NewListDBSnapshotsTool(deps.AWSClient, f.logger), nil
 
+	// Secrets Manager Tools
+	case "create-secret":
+		return NewCreateSecretTool(deps.AWSClient, f.logger), nil
+	case "get-secret":
+		return NewGetSecretTool(deps.AWSClient, f.logger), nil
+	case "update-secret":
+		return NewUpdateSecretTool(deps.AWSClient, f.logger), nil
+	case "list-secrets":
+		return NewListSecretsTool(deps.AWSClient, f.logger), nil
+	case "delete-secret":
+		return NewDeleteSecretTool(deps.AWSClient, f.logger), nil
+
 	// State Management Tools
 	case "analyze-infrastructure-state":
 		return NewAnalyzeStateTool(deps, deps.AWSClient, f.logger), nil
@@ -253,6 +265,13 @@ func (f *ToolFactoryImpl) GetSupportedToolTypes() []string {
 		"create-db-snapshot",
 		"list-db-instances",
 		"list-db-snapshots",
+
+		// Secrets Manager Tools
+		"create-secret",
+		"get-secret",
+		"update-secret",
+		"list-secrets",
+		"delete-secret",
 
 		// State Tools
 		"analyze-infrastructure-state",
